@@ -1,0 +1,456 @@
+{
+
+    "PF1U_CURRENT":{
+        "key":"PF1U_CURRENT",
+        "pvname":"PF1U_CURRENT",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF2U_CURRENT":{
+        "key":"PF2U_CURRENT",
+        "pvname":"PF2U_CURRENT",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF3U_CURRENT":{
+        "key":"PF3U_CURRENT",
+        "pvname":"PF3U_CURRENT",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF3L_CURRENT":{
+        "key":"PF3L_CURRENT",
+        "pvname":"PF3L_CURRENT",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF4U_CURRENT":{
+        "key":"PF4U_CURRENT",
+        "pvname":"PF4U_CURRENT",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF4L_CURRENT":{
+        "key":"PF4L_CURRENT",
+        "pvname":"PF4L_CURRENT",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF5U_CURRENT":{
+        "key":"PF5U_CURRENT",
+        "pvname":"PF5U_CURRENT",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF5L_CURRENT":{
+        "key":"PF5L_CURRENT",
+        "pvname":"PF5L_CURRENT",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF6U_CURRENT":{
+        "key":"PF6U_CURRENT",
+        "pvname":"PF6U_CURRENT",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF6L_CURRENT":{
+        "key":"PF6L_CURRENT",
+        "pvname":"PF6L_CURRENT",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF7U_CURRENT":{
+        "key":"PF7U_CURRENT",
+        "pvname":"PF7U_CURRENT",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF1L_TEMP_IN":{
+        "key":"PF1L_TEMP_IN",
+        "pvname":"TMS_PFCL1_MHL_TCUS00",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF1L_TEMP_OUT1":{
+        "key":"PF1L_TEMP_OUT1",
+        "pvname":"TMS_PFCL1_MHL_TCUR01",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF1L_TEMP_OUT2":{
+        "key":"PF1L_TEMP_OUT2",
+        "pvname":"TMS_PFCL1_MHL_TCUR02",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF1L_TEMP_OUT3":{
+        "key":"PF1L_TEMP_OUT3",
+        "pvname":"TMS_PFCL1_MHL_TCUR03",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF1L_TEMP_OUT4":{
+        "key":"PF1L_TEMP_OUT4",
+        "pvname":"TMS_PFCL1_MHL_TCUR04",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF1L_TEMP_OUT5":{
+        "key":"PF1L_TEMP_OUT5",
+        "pvname":"TMS_PFCL1_MHL_TCUR05",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF1L_TEMP_OUT6":{
+        "key":"PF1L_TEMP_OUT6",
+        "pvname":"TMS_PFCL1_MHL_TCUR06",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF1U_TEMP_IN":{
+        "key":"PF1U_TEMP_IN",
+        "pvname":"TMS_PFCU1_MHL_TCUS00",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF1U_TEMP_OUT1":{
+        "key":"PF1U_TEMP_OUT1",
+        "pvname":"TMS_PFCU1_MHL_TCUR01",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF1U_TEMP_OUT2":{
+        "key":"PF1U_TEMP_OUT2",
+        "pvname":"TMS_PFCU1_MHL_TCUR02",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF1U_TEMP_OUT3":{
+        "key":"PF1U_TEMP_OUT3",
+        "pvname":"TMS_PFCU1_MHL_TCUR03",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF1U_TEMP_OUT4":{
+        "key":"PF1U_TEMP_OUT4",
+        "pvname":"TMS_PFCU1_MHL_TCUR04",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF1U_TEMP_OUT5":{
+        "key":"PF1U_TEMP_OUT5",
+        "pvname":"TMS_PFCU1_MHL_TCUR05",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF1U_TEMP_OUT6":{
+        "key":"PF1U_TEMP_OUT6",
+        "pvname":"TMS_PFCU1_MHL_TCUR06",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF1U_PRES_IN":{
+        "key":"PF1U_PRES_IN",
+        "pvname":"HDS_HCS_R_P21U",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF1L_PRES_IN":{
+        "key":"PF1L_PRES_IN",
+        "pvname":"HDS_HCS_R_P21L",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF2U_PRES_IN":{
+        "key":"PF2U_PRES_IN",
+        "pvname":"HDS_HCS_R_P22U",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF2L_PRES_IN":{
+        "key":"PF2L_PRES_IN",
+        "pvname":"HDS_HCS_R_P22L",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF3U_PRES_IN":{
+        "key":"PF3U_PRES_IN",
+        "pvname":"HDS_HCS_R_P23U",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF3L_PRES_IN":{
+        "key":"PF3L_PRES_IN",
+        "pvname":"HDS_HCS_R_P23L",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF4U_PRES_IN":{
+        "key":"PF4U_PRES_IN",
+        "pvname":"HDS_HCS_R_P24U",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF4L_PRES_IN":{
+        "key":"PF4L_PRES_IN",
+        "pvname":"HDS_HCS_R_P24L",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF5U_PRES_IN":{
+        "key":"PF5U_PRES_IN",
+        "pvname":"HDS_HCS_R_P25U",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF5L_PRES_IN":{
+        "key":"PF5L_PRES_IN",
+        "pvname":"HDS_HCS_R_P25L",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF6_PRES_IN":{
+        "key":"PF6_PRES_IN",
+        "pvname":"HDS_HCS_R_P41",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF7_PRES_IN":{
+        "key":"PF7_PRES_IN",
+        "pvname":"HDS_HCS_R_P42",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF_PRES_OUT":{
+        "key":"PF_PRES_OUT",
+        "pvname":"HDS_HCS_R_P28",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF1U_FLOW_IN":{
+        "key":"PF1U_FLOW_IN",
+        "pvname":"HDS_HCS_W_F21U",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF1L_FLOW_IN":{
+        "key":"PF1L_FLOW_IN",
+        "pvname":"HDS_HCS_W_F21L",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF2U_FLOW_IN":{
+        "key":"PF2U_FLOW_IN",
+        "pvname":"HDS_HCS_W_F22U",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF2L_FLOW_IN":{
+        "key":"PF2L_FLOW_IN",
+        "pvname":"HDS_HCS_W_F22L",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF3U_FLOW_IN":{
+        "key":"PF3U_FLOW_IN",
+        "pvname":"HDS_HCS_W_F23U",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF3L_FLOW_IN":{
+        "key":"PF3L_FLOW_IN",
+        "pvname":"HDS_HCS_W_F23L",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF4U_FLOW_IN":{
+        "key":"PF4U_FLOW_IN",
+        "pvname":"HDS_HCS_W_F24U",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF4L_FLOW_IN":{
+        "key":"PF4L_FLOW_IN",
+        "pvname":"HDS_HCS_W_F24L",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF5U_FLOW_IN":{
+        "key":"PF5U_FLOW_IN",
+        "pvname":"HDS_HCS_W_F25U",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF5L_FLOW_IN":{
+        "key":"PF5L_FLOW_IN",
+        "pvname":"HDS_HCS_W_F25L",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF6_FLOW_IN":{
+        "key":"PF6_FLOW_IN",
+        "pvname":"HDS_HCS_W_F41",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    },
+    "PF7_FLOW_IN":{
+        "key":"PF7_FLOW_IN",
+        "pvname":"HDS_HCS_W_F42",
+        "wr": "R",
+        "enable_ca": true,
+        "buff_size": 64,
+        "vec_size": 32,
+        "pred_size": 16
+    }
+
+
+
+}

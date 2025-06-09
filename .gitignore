@@ -1,0 +1,5 @@
+/target
+/bank
+Cargo.lock
+/bincode
+/src/fonts

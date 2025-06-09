@@ -1,0 +1,43 @@
+[package]
+name = "sim0"
+version = "0.1.0"
+edition = "2021"
+
+
+[dependencies]
+epics-ca = {path="/Users/giilkwon/WorkSpace/epics-ca"}
+tokio = { version = "1", features = ["full"] }
+serde_json  = "1.0"
+serde       = { version = "1.0", features = ["derive"] }
+tracing = { version = "0.1.41", features = ["attributes"] }
+tracing-subscriber = "0.3.19"
+iced = {version = "0.13.1", features = ["canvas","debug","tokio"]}
+
+
+plotters-iced = "0.11"
+# plotters = { version = "0.3", default-features = false }
+plotters-backend = "0.3"
+plotters="0.3"
+
+sysinfo = { version = "0.30", default-features = false }
+chrono = { version = "0.4", default-features = false }
+rand = "0.9"
+
+# candle-core = { version = "0.8.4", features = ["cuda"] }
+candle-core = { version = "0.8.4"}
+candle-datasets ={ version = "0.8.4"}
+# candle-nn = { version = "0.8.4", features = ["cuda"] }
+candle-nn = { version = "0.8.4" }
+rayon = "1.8"
+
+anyhow = "1.0.97"
+bincode = "2.0.1"
+plotly = "0.12.1"
+ndarray = "0.16.1"
+arrow = "54.3.0"
+parquet = "54.3.0"
+tqdm  = "0.7.0"
+
+# hdf5 = {path="/root/workspace/hdf5-rust/hdf5"} 
+hdf5 = { path = "/Users/giilkwon/WorkSpace/hdf5-rust/hdf5"}
+polars = { git = "https://github.com/pola-rs/polars", features = ["dtype-struct", "ndarray","lazy"] }
