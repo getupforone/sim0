@@ -1,6 +1,6 @@
 [env]
-EPICS_BASE = "/Users/giilkwon/WorkSpace/EPICS/base"
-EPICS_HOST_ARCH="darwin-x86"
+EPICS_BASE = "/usr/local/epics/base"
+EPICS_HOST_ARCH="linux-x86_64"
 #export EPICS_CA_ADDR_LIST="cag.kstar.kfe.re.kr 127.0.0.1"
 
 EPICS_CA_ADDR_LIST="127.0.0.1"

@@ -171,13 +171,13 @@ impl Publisher {
     
     pub async fn run(&mut self) -> Result<()> {
         let data_window = self.config.input_window + self.config.output_window;
-        let train_dataset = SCDatasetBuilder::new("train",
+        let test_dataset = SCDatasetBuilder::new("train",
              &self.device, data_window,self.config.batch_size)
             .load_data()
             .build();
         let dev = self.device.clone();
-        let train_loader = SCDataLoader::new(
-                train_dataset.clone(),
+        let test_loader = SCDataLoader::new(
+                test_dataset.clone(),
                1,
                 false,
                 true,
@@ -185,7 +185,7 @@ impl Publisher {
                 self.config.output_window,
                 &dev,
             );   
-        let mut train_batcher = train_loader.batcher();
+        let mut test_batcher = test_loader.batcher();
 
         // let mut shutdown = Shutdown::new(self.notify_shutdown.subscribe());
 
@@ -194,7 +194,7 @@ impl Publisher {
             let pv = self.pv.clone();
             let mut value = None;
             let mut input_tensor_o= None;
-            if let Some(Ok((input_batch, target_batch))) = train_batcher.next() {
+            if let Some(Ok((input_batch, target_batch))) = test_batcher.next() {
                 // println!("input_batch: {:?}, target_batch: {:?}", input_batch.shape(), target_batch.shape());
 
                 let input_batch2 = input_batch.to_device(&self.device).unwrap();
