@@ -25,7 +25,7 @@ use candle_datasets::{batcher::IterResult2, Batcher};
 use crate::config::Config;
 
 use tqdm::pbar;
-
+use crate::dataset::MinMaxScaler;
 #[derive(Debug)]
 pub struct OUT_TX {
     pv:PV,
@@ -171,7 +171,7 @@ impl Publisher {
     
     pub async fn run(&mut self) -> Result<()> {
         let data_window = self.config.input_window + self.config.output_window;
-        let test_dataset = SCDatasetBuilder::new("train",
+        let test_dataset = SCDatasetBuilder::new("test",
              &self.device, data_window,self.config.batch_size)
             .load_data()
             .build();
@@ -188,7 +188,8 @@ impl Publisher {
         let mut test_batcher = test_loader.batcher();
 
         // let mut shutdown = Shutdown::new(self.notify_shutdown.subscribe());
-
+        let mut scaler_tmp = MinMaxScaler::new((-1.0, 1.0), &self.device);
+        let mut scaler = scaler_tmp.load("test", &self.device)?;
         while !self.shutdown.is_shutdown() {
             let start = Instant::now();
             let pv = self.pv.clone();
@@ -198,11 +199,16 @@ impl Publisher {
                 // println!("input_batch: {:?}, target_batch: {:?}", input_batch.shape(), target_batch.shape());
 
                 let input_batch2 = input_batch.to_device(&self.device).unwrap();
+                // println!("input_batch2: {:?}", input_batch2.shape());
                 let target_batch2 = target_batch.to_device(&self.device).unwrap();
                 let input_batch2  = input_batch2.squeeze(0).unwrap();
-                let input_batch2  = input_batch2.squeeze(1).unwrap();
+                // println!("input_batch2: {:?}", input_batch2.shape());
+                let scaled_input_tensor = scaler.inverse_transform(&input_batch2)?;
+                let scaled_input_tensor  = scaled_input_tensor.squeeze(1).unwrap();
+                // println!("scaled_input_tensor: {:?}", scaled_input_tensor.shape());
                 // let input = input_batch2.index_select(0, self.index as u64).unwrap();
-                let input_tensor = input_batch2.get(self.index).unwrap();
+                
+                let input_tensor = scaled_input_tensor.get(self.index).unwrap();
               
                 // println!("input_tensor: {:?}", input_tensor.shape());
                 input_tensor_o = Some(input_tensor.clone());
@@ -259,7 +265,8 @@ impl Publisher {
             // time::sleep(Duration::from_millis(1000)).await;
             let dt = start.elapsed(); // 시작 시점부터 현재까지의 경과 시간 계산
             println!("[Publisher] dt: {:?}", dt);
-            let dur = Duration::from_millis(200).saturating_sub(dt); // 1초에서 경과 시간을 뺌
+            let dur = Duration::from_millis(1000).saturating_sub(dt); // 1초에서 경과 시간을 뺌
+            // let dur = Duration::from_millis(200).saturating_sub(dt); // 1초에서 경과 시간을 뺌
             // let dur = Duration::from_micros(100).saturating_sub(dt); // 1초에서 경과 시간을 뺌
             sleep(dur).await; // 
 

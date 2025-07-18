@@ -1,5 +1,5 @@
 
-use std::{collections::HashMap, hash::Hash};
+use std::{collections::HashMap, hash::Hash,io::{BufReader, BufWriter}};
 
 use hdf5::{File as hFile, Group, Result as hResult};
 use serde::{Deserialize, Serialize};
@@ -32,6 +32,7 @@ use std::sync::Arc;
 use tqdm::tqdm;
 
 use rayon::prelude::*;
+use bincode::{Decode, Encode};
 
 use crate::savedata::{binData,save_bin, load_bin, get_bin_dir,get_bin_file_path,get_binfile_paths_in_folder};
 
@@ -140,7 +141,17 @@ const TAG_NAMES: [&str; 50] = [
     "PF6_FLOW_IN",
     "PF7_FLOW_IN",
 ];
-struct MinMaxScaler<'a> {
+
+
+#[derive(Encode, Decode, Serialize, Deserialize, Debug)]    
+pub struct ScalerBinData{
+    feature_range: (f32, f32),
+    min: Vec<Vec<f32>>,
+    max: Vec<Vec<f32>>,
+    data_range: Vec<Vec<f32>>,
+    scale: Vec<Vec<f32>>,
+}
+pub struct MinMaxScaler<'a> {
     feature_range: (f32, f32),
     min: Option<Tensor>,
     max: Option<Tensor>,
@@ -150,7 +161,7 @@ struct MinMaxScaler<'a> {
 }
 
 impl<'a> MinMaxScaler<'a> {
-    fn new(feature_range: (f32, f32), device: &'a Device) -> Self {
+    pub fn new(feature_range: (f32, f32), device: &'a Device) -> Self {
         MinMaxScaler {
             feature_range,
             min: None,
@@ -160,6 +171,101 @@ impl<'a> MinMaxScaler<'a> {
             device,
         }
     }
+    pub fn save(&self, mode:&str) -> Result<()> {
+
+        let file_path = self.get_scaler_file_path(mode)?;
+        self.save_bin(&file_path[..])
+    }
+    pub fn load(&self, mode:&str, device:&'a Device) -> Result<Self> {
+        let file_path = self.get_scaler_file_path(mode)?;
+        self.load_bin(&file_path[..], device)
+    }
+    pub fn save_bin(&self,file_path: &str) -> Result<()>{
+        let file = File::create(file_path)?;
+        let mut writer = BufWriter::new(file);
+        let min_ts = self.min.clone().unwrap();
+        let min_vec = self.cvt_tensor_to_vec(min_ts)?;
+        let max_ts = self.max.clone().unwrap();
+        let max_vec = self.cvt_tensor_to_vec(max_ts)?;
+        let data_range_ts = self.data_range.clone().unwrap();
+        let data_range_vec = self.cvt_tensor_to_vec(data_range_ts)?;
+        let scale_ts = self.scale.clone().unwrap();
+        let scale_vec = self.cvt_tensor_to_vec(scale_ts)?;
+        let sbd = ScalerBinData{
+            feature_range: self.feature_range,
+            min: min_vec,
+            max: max_vec,
+            data_range: data_range_vec,
+            scale: scale_vec,
+        };
+        bincode::encode_into_std_write(sbd, &mut writer, bincode::config::standard())?;
+        Ok(())
+    }
+    pub fn load_bin(&self,file_path: &str, device:&'a Device) -> Result<Self> {
+        let file = File::open(file_path)?;
+        let mut reader = BufReader::new(file);
+        let sbd:ScalerBinData = bincode::decode_from_std_read(&mut reader, bincode::config::standard())?;
+        let min_ts = self.cvt_vec_to_tensor(&sbd.min, device)?;
+        let max_ts = self.cvt_vec_to_tensor(&sbd.max, device)?;
+        let data_range_ts = self.cvt_vec_to_tensor(&sbd.data_range, device)?;
+        let scale_ts = self.cvt_vec_to_tensor(&sbd.scale, device)?;
+        let scaler = MinMaxScaler {
+            feature_range: sbd.feature_range,
+            min: Some(min_ts),
+            max: Some(max_ts),
+            data_range: Some(data_range_ts),
+            scale: Some(scale_ts),
+            device,
+        };
+
+        Ok(scaler)
+    }
+
+    fn cvt_tensor_to_vec(&self, tensor: Tensor) -> Result<Vec<Vec<f32>>> {
+        let tensor_cpu = tensor.to_device(&Device::Cpu)?;
+        let tensor_data = tensor_cpu.to_vec2::<f32>()?;
+        Ok(tensor_data)
+    }
+    fn cvt_vec_to_tensor(&self, tensor_data: &Vec<Vec<f32>>,device:&Device) -> Result<Tensor> {
+        let mut data_vec = Vec::with_capacity (tensor_data.len());
+        for row in tensor_data.iter(){
+            data_vec.push(row.as_slice());
+        }
+        let tensor = Tensor::new(data_vec, device)
+                            .expect("failed to create tensor");
+               
+        // let tensor = Tensor::new(vec, &Device::Cpu)?;
+        Ok(tensor)
+    }
+    pub fn get_scaler_dir(&self,mode:&str) -> Result<String>{
+    let path_str = format!("./scaler/{}",mode);
+    let dir_path = Path::new(&path_str);
+    if !dir_path.exists() {
+        println!("Creating directory: {}", dir_path.display());
+        std::fs::create_dir_all(&dir_path)?;
+    } else if dir_path.is_dir(){
+        println!("Directory already exists: {}", dir_path.display());
+    } else {
+        println!("Path exists but is not a directory: {}", dir_path.display());
+        return Err(anyhow::anyhow!("Path exists but is not a directory"));
+    }
+    Ok(path_str)
+}
+pub fn get_scaler_file_path(&self,mode:&str) -> Result<String>{
+    let dir_path = self.get_scaler_dir(mode)?;
+    let path_str = format!("{}/{}_scaler.bin", dir_path, mode);
+    let file_path = Path::new(&path_str);
+    if !file_path.exists() {
+        println!("Creating file: {}", file_path.display());
+        
+    } else if file_path.is_file(){
+        println!("File already exists: {}", file_path.display());
+    } else {
+        println!("Path exists but is not a file: {}", file_path.display());
+        return Err(anyhow::anyhow!("Path exists but is not a file"));
+    }
+    Ok(path_str)
+}
     // fn partial_fit(&mut self, x: &Tensor) -> Result<()> {
     //     // max와 min 텐서 안전하게 가져오기
     //     let max_tensor = self.max.as_ref()
@@ -225,7 +331,45 @@ impl<'a> MinMaxScaler<'a> {
 
         Ok(())
     }
+    pub fn inverse_transform(&self, xn: &Tensor) -> Result<Tensor> {
+        let min_tensor = self
+            .min
+            .as_ref()
+            .ok_or_else(|| candle_core::Error::Msg("min tensor is None".to_string()))?
+            .broadcast_as(xn.shape())?;
+        let max_tensor = self
+            .max
+            .as_ref()
+            .ok_or_else(|| candle_core::Error::Msg("max tensor is None".to_string()))?
+            .broadcast_as(xn.shape())?;
+        
+        let offset = Tensor::new(&[self.feature_range.0], &self.device)?
+            .reshape((1, 1))?
+            .broadcast_as(xn.shape());
 
+        let diff = (xn - offset)?;
+
+        let data_range = (max_tensor - min_tensor)?;
+        let scale_factor = (self.feature_range.1 - self.feature_range.0) as f32;
+        let scale_tensor = Tensor::new(&[scale_factor], self.device)?
+            .reshape((1, 1))?
+            .broadcast_as(data_range.shape())?;
+        let inv_scale = (data_range / &scale_tensor)?;
+        let inv_scale_tensor = 
+            inv_scale
+            .as_ref()
+            .broadcast_as(diff.shape())?;
+        // .ok_or_else(|| candle_core::Error::Msg("x - min is None".to_string()))?;
+        let inv_scaled = (diff * inv_scale_tensor)?;
+        let min_tensor2 = self
+            .min
+            .as_ref()
+            .ok_or_else(|| candle_core::Error::Msg("min tensor is None".to_string()))?
+            .broadcast_as(inv_scaled.shape())?;
+
+        let result = (inv_scaled + min_tensor2)?;
+        Ok(result)
+    }
     fn transform(&self, x: &Tensor) -> Result<Tensor> {
         let min_tensor = self
             .min
