@@ -5,8 +5,8 @@ edition = "2021"
 
 
 [dependencies]
-epics-ca = {path="/Users/giilkwon/WorkSpace/epics-ca"}
-# epics-ca = {path="/root/workspace/epics-ca"}
+# epics-ca = {path="/Users/giilkwon/WorkSpace/epics-ca"}
+epics-ca = {path="/root/workspace/epics-ca"}
 tokio = { version = "1", features = ["full"] }
 serde_json  = "1.0"
 serde       = { version = "1.0", features = ["derive"] }
@@ -39,8 +39,8 @@ arrow = "54.3.0"
 parquet = "54.3.0"
 tqdm  = "0.7.0"
 
-# hdf5 = {path="/root/workspace/hdf5-rust/hdf5"} 
-hdf5 = { path = "/Users/giilkwon/WorkSpace/hdf5-rust/hdf5"}
+hdf5 = {path="/root/workspace/hdf5-rust/hdf5"} 
+# hdf5 = { path = "/Users/giilkwon/WorkSpace/hdf5-rust/hdf5"}
 polars = { git = "https://github.com/pola-rs/polars", features = ["dtype-struct", "ndarray","lazy"] }
 
 # sci-rs = {git = "https://github.com/qsib-cbie/sci-rs"}
