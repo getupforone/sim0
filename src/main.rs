@@ -5,7 +5,8 @@ use iced::futures::channel::mpsc::Receiver;
 use plotters::chart;
 use tokio::signal;
 use tokio::time::Instant;
-use tokio::sync::{broadcast,mpsc};
+use tokio::sync::{broadcast,mpsc, watch};
+use tokio::net::UdpSocket;
 use tracing::{debug, error, info, instrument};
 use tokio::time::{self, Duration};
 
@@ -77,6 +78,7 @@ use publisher_gui::PublisherGUI;
 
 pub mod dataset;
 use dataset::{SCDataLoader,SCDatasetBuilder};
+// use dataset::{SCShotDataLoader};
 pub mod config;
 use config::Config;
 
@@ -196,7 +198,31 @@ async fn pvs_put( outdata_rx: &mut mpsc::Receiver<PVValue>,
     
     Ok(())
 }
+async fn pvput_startstop( startstop:bool) -> Result<()>
+{
 
+    let pv = PV{key:"SIM0_STARTSTOP".to_string(),
+        pvname: "SIM0_STARTSTOP".to_string(),
+        wr:0b11,
+        enable_ca:true,
+        buff_size:1,
+        vec_size:1,
+        pred_size:1,
+    };
+    
+    // if pv.enable_ca == false{continue;}
+    // if pv.wr  &  WRITE_BIN_CODE  == 0 {continue;}
+    if pv.enable_ca == false{return Ok(());}
+    // if pv.wr  &  WRITE_BIN_CODE  == 0 {return Ok(());}
+    
+    let mut pvctx = PVContext::new(pv).await;
+    let channel =  Arc::clone(&pvctx.channel);
+    // let gui_tx_val = KVT{key:pvctx.key,value:pvvalue.value.unwrap(),time_stamp:Utc::now()};
+    let val = if startstop == true{ 1.0}else{0.0};
+    let handle = pvctx.put(val, &*channel ).await?;
+
+    Ok(())
+}
 
 impl Server{
     pub fn new(pv_infos:HashMap<String, PVInfos>,
@@ -244,6 +270,7 @@ impl Server{
 
         let (pvdata_tx, mut pvdata_rx) = mpsc::channel(100);
         let (outdata_tx, mut outdata_rx) = mpsc::channel(100);
+        let (startstop_tx, mut startstop_rx) = watch::channel(false);
        
 
         // let mut listener: Listener = Listener::new(
@@ -283,6 +310,7 @@ impl Server{
                     self.db_holder.db(),
                     Shutdown::new(self.notify_shutdown.subscribe()),
                     self.shutdown_complete_tx.clone(),pv,o_tx,
+                    startstop_tx.clone(),
                     conf,dev,
                     );
                 tokio::spawn(async move{
@@ -311,6 +339,38 @@ impl Server{
         //     error!("Failed to get next batch from train_batcher");
         // }
         // let pvm: HashMap<String, PV> = self.pvs.pv_map.clone();
+        let socket = UdpSocket::bind("0.0.0.0:0").await?;
+        let server = "127.0.0.1:9000";
+        tokio::spawn(async move{
+            loop{
+                // let start = Instant::now();
+                let mut val = false;
+                let startstop = startstop_rx.changed().await;
+                val = match startstop {
+                    Ok(_) => {
+                        let val = *startstop_rx.borrow();
+                        info!("startstop changed: {}", val);
+                        val
+                    },
+                    Err(e) => {
+                        error!("startstop channel closed: {}", e);
+                        break;
+                    }
+                };
+                if val {
+                            socket.send_to(b"START", server).await;
+                        } else {
+                            socket.send_to(b"STOP", server).await;
+                        }
+                // let dt = start.elapsed(); // 시작 시점부터 현재까지의 경과 시간 계산
+                // println!("[startstopwatch] dt: {:?}", dt);
+                // let dur = Duration::from_millis(1).saturating_sub(dt); // 1초에서 경과 시간을 뺌
+                // // let dur = Duration::from_millis(200).saturating_sub(dt); // 1초에서 경과 시간을 뺌
+                // // let dur = Duration::from_micros(100).saturating_sub(dt); // 1초에서 경과 시간을 뺌
+                // sleep(dur).await; // 
+            }
+        });
+
         let pvm = &self.pvs.pv_map;
 
 
@@ -339,12 +399,17 @@ impl Server{
                     return Ok(());
                 }
             }
+
+
+
+
             // let dt = start.elapsed(); // 시작 시점부터 현재까지의 경과 시간 계산
             // println!("====================[main]==================== dt: {:?}", dt);
             // let dur = Duration::from_millis(100).saturating_sub(dt); // 1초에서 경과 시간을 뺌
             // let dur = Duration::from_micros(100).saturating_sub(dt); // 1초에서 경과 시간을 뺌
             // sleep(dur).await; // 
     }
+
 
     return Ok(())
 }

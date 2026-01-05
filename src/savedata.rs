@@ -9,21 +9,22 @@ use anyhow::{anyhow, Result};
 pub struct binData{
     pub data: HashMap<String, Vec<Vec<f32>>>,
     pub len: HashMap<String, usize>,
+    pub shotnums: Vec<String>,
 }
 
-pub fn save_bin(datahash: &HashMap<String, Vec<Vec<f32>>>, lenhash: &HashMap<String, usize>, file_path: &str) -> Result<()> {
-    let wrapper = binData{data: datahash.clone(),len: lenhash.clone()};
+pub fn save_bin(datahash: &HashMap<String, Vec<Vec<f32>>>, lenhash: &HashMap<String, usize>,shotnums: &Vec<String>, file_path: &str) -> Result<()> {
+    let wrapper = binData{data: datahash.clone(),len: lenhash.clone(),shotnums: shotnums.clone()};
     let file = File::create(file_path)?;
     let mut writer = BufWriter::new(file);  
     bincode::encode_into_std_write(wrapper, &mut writer, bincode::config::standard())?;
     Ok(())
 }
 
-pub fn load_bin(file_path: &str) -> Result<(HashMap<String, Vec<Vec<f32>>>,HashMap<String, usize>)> {
+pub fn load_bin(file_path: &str) -> Result<(HashMap<String, Vec<Vec<f32>>>,HashMap<String, usize>, Vec<String>)> {
     let file = File::open(file_path)?;
     let mut reader = BufReader::new(file);
     let data: binData = bincode::decode_from_std_read(&mut reader, bincode::config::standard())?;
-    Ok((data.data, data.len))
+    Ok((data.data, data.len, data.shotnums))
 }
 
 pub fn get_bin_dir(mode:&str) -> Result<String>{

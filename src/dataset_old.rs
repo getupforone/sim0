@@ -1,8 +1,7 @@
 
-use std::{collections::HashMap, hash::Hash};
+use std::{collections::HashMap, hash::Hash,io::{BufReader, BufWriter}};
 
 use hdf5::{File as hFile, Group, Result as hResult};
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_json;
 
@@ -24,85 +23,20 @@ use arrow::record_batch::RecordBatch;
 use parquet::arrow::arrow_reader::{ParquetRecordBatchReader, ParquetRecordBatchReaderBuilder};
 use parquet::arrow::{arrow_reader, ArrowWriter};
 use parquet::file::properties::WriterProperties;
-use rand::{seq::SliceRandom, rng};
-
-// use std::fs::File;
+use rand::{seq::SliceRandom, thread_rng};
+use std::fs::File;
 use std::path::Path;
 use std::rc::Rc;
 use std::sync::Arc;
-
-// use sci_rs::signal::filter::{design::*, sosfiltfilt_dyn};
-use ndarray::{Array1, SliceInfoElem};
 
 use tqdm::tqdm;
 
 use rayon::prelude::*;
 use bincode::{Decode, Encode};
-use std::{ fs::File, io::{BufReader, BufWriter}};
-
-use pyo3::prelude::*;
-use pyo3::types::{IntoPyDict,PyModule};
 
 use crate::savedata::{binData,save_bin, load_bin, get_bin_dir,get_bin_file_path,get_binfile_paths_in_folder};
 
-
-// use crate::augementation::{TimeSeriesAugmenter,AugmentationConfig};
-
-
-
 const MODES: [&str; 3] = ["train", "val", "test"];
-const TAG_NAMES: [&str; 50] = [
-    "PF1U_CURRENT",
-    "PF2U_CURRENT",
-    "PF3U_CURRENT",
-    "PF3L_CURRENT",
-    "PF4U_CURRENT",
-    "PF4L_CURRENT",
-    "PF5U_CURRENT",
-    "PF5L_CURRENT",
-    "PF6U_CURRENT",
-    "PF6L_CURRENT",
-    "PF7U_CURRENT",
-    "PF1L_TEMP_IN",
-    "PF1L_TEMP_OUT1",
-    "PF1L_TEMP_OUT2",
-    "PF1L_TEMP_OUT3",
-    "PF1L_TEMP_OUT4",
-    "PF1L_TEMP_OUT5",
-    "PF1L_TEMP_OUT6",
-    "PF1U_TEMP_IN",
-    "PF1U_TEMP_OUT1",
-    "PF1U_TEMP_OUT2",
-    "PF1U_TEMP_OUT3",
-    "PF1U_TEMP_OUT4",
-    "PF1U_TEMP_OUT5",
-    "PF1U_TEMP_OUT6",
-    "PF1U_PRES_IN",
-    "PF1L_PRES_IN",
-    "PF2U_PRES_IN",
-    "PF2L_PRES_IN",
-    "PF3U_PRES_IN",
-    "PF3L_PRES_IN",
-    "PF4U_PRES_IN",
-    "PF4L_PRES_IN",
-    "PF5U_PRES_IN",
-    "PF5L_FLOW_IN",
-    "PF6_PRES_IN",
-    "PF7_PRES_IN",
-    "PF_PRES_OUT",
-    "PF1U_FLOW_IN",
-    "PF1L_FLOW_IN",
-    "PF2U_FLOW_IN",
-    "PF2L_FLOW_IN",
-    "PF3U_FLOW_IN",
-    "PF3L_FLOW_IN",
-    "PF4U_FLOW_IN",
-    "PF4L_FLOW_IN",
-    "PF5U_FLOW_IN",
-    "PF5L_PRES_IN",
-    "PF6_FLOW_IN",
-    "PF7_FLOW_IN",
-];
 // const TAG_NAMES: [&str; 50] = [
 //     "PF1L_FLOW_IN",
 //     "PF1L_PRES_IN",
@@ -155,8 +89,60 @@ const TAG_NAMES: [&str; 50] = [
 //     "PF7_PRES_IN",
 //     "PF_PRES_OUT",
 // ];
+const TAG_NAMES: [&str; 50] = [
+    "PF1U_CURRENT",
+    "PF2U_CURRENT",
+    "PF3U_CURRENT",
+    "PF3L_CURRENT",
+    "PF4U_CURRENT",
+    "PF4L_CURRENT",
+    "PF5U_CURRENT",
+    "PF5L_CURRENT",
+    "PF6U_CURRENT",
+    "PF6L_CURRENT",
+    "PF7U_CURRENT",
+    "PF1L_TEMP_IN",
+    "PF1L_TEMP_OUT1",
+    "PF1L_TEMP_OUT2",
+    "PF1L_TEMP_OUT3",
+    "PF1L_TEMP_OUT4",
+    "PF1L_TEMP_OUT5",
+    "PF1L_TEMP_OUT6",
+    "PF1U_TEMP_IN",
+    "PF1U_TEMP_OUT1",
+    "PF1U_TEMP_OUT2",
+    "PF1U_TEMP_OUT3",
+    "PF1U_TEMP_OUT4",
+    "PF1U_TEMP_OUT5",
+    "PF1U_TEMP_OUT6",
+    "PF1U_PRES_IN",
+    "PF1L_PRES_IN",
+    "PF2U_PRES_IN",
+    "PF2L_PRES_IN",
+    "PF3U_PRES_IN",
+    "PF3L_PRES_IN",
+    "PF4U_PRES_IN",
+    "PF4L_PRES_IN",
+    "PF5U_PRES_IN",
+    "PF5L_FLOW_IN",
+    "PF6_PRES_IN",
+    "PF7_PRES_IN",
+    "PF_PRES_OUT",
+    "PF1U_FLOW_IN",
+    "PF1L_FLOW_IN",
+    "PF2U_FLOW_IN",
+    "PF2L_FLOW_IN",
+    "PF3U_FLOW_IN",
+    "PF3L_FLOW_IN",
+    "PF4U_FLOW_IN",
+    "PF4L_FLOW_IN",
+    "PF5U_FLOW_IN",
+    "PF5L_PRES_IN",
+    "PF6_FLOW_IN",
+    "PF7_FLOW_IN",
+];
 
-  
+
 #[derive(Encode, Decode, Serialize, Deserialize, Debug)]    
 pub struct ScalerBinData{
     feature_range: (f32, f32),
@@ -164,26 +150,29 @@ pub struct ScalerBinData{
     max: Vec<Vec<f32>>,
     data_range: Vec<Vec<f32>>,
     scale: Vec<Vec<f32>>,
-    min_offset: Vec<Vec<f32>>,
 }
-
 pub struct MinMaxScaler<'a> {
     feature_range: (f32, f32),
     min: Option<Tensor>,
     max: Option<Tensor>,
     data_range: Option<Tensor>,
     scale: Option<Tensor>,
-    min_offset: Option<Tensor>,
     device: &'a Device,
 }
 
 impl<'a> MinMaxScaler<'a> {
     pub fn new(feature_range: (f32, f32), device: &'a Device) -> Self {
         MinMaxScaler {
-            feature_range,min: None,max: None,data_range: None,scale: None,min_offset: None,device,
+            feature_range,
+            min: None,
+            max: None,
+            data_range: None,
+            scale: None,
+            device,
         }
     }
     pub fn save(&self, mode:&str) -> Result<()> {
+
         let file_path = self.get_scaler_file_path(mode)?;
         self.save_bin(&file_path[..])
     }
@@ -202,14 +191,12 @@ impl<'a> MinMaxScaler<'a> {
         let data_range_vec = self.cvt_tensor_to_vec(data_range_ts)?;
         let scale_ts = self.scale.clone().unwrap();
         let scale_vec = self.cvt_tensor_to_vec(scale_ts)?;
-        let offset_vec = self.cvt_tensor_to_vec(self.min_offset.clone().unwrap())?;
         let sbd = ScalerBinData{
             feature_range: self.feature_range,
             min: min_vec,
             max: max_vec,
             data_range: data_range_vec,
             scale: scale_vec,
-            min_offset: offset_vec,
         };
         bincode::encode_into_std_write(sbd, &mut writer, bincode::config::standard())?;
         Ok(())
@@ -222,16 +209,15 @@ impl<'a> MinMaxScaler<'a> {
         let max_ts = self.cvt_vec_to_tensor(&sbd.max, device)?;
         let data_range_ts = self.cvt_vec_to_tensor(&sbd.data_range, device)?;
         let scale_ts = self.cvt_vec_to_tensor(&sbd.scale, device)?;
-        let offset_ts = self.cvt_vec_to_tensor(&sbd.min_offset, device)?;
         let scaler = MinMaxScaler {
             feature_range: sbd.feature_range,
             min: Some(min_ts),
             max: Some(max_ts),
             data_range: Some(data_range_ts),
             scale: Some(scale_ts),
-            min_offset:Some(offset_ts),
             device,
         };
+
         Ok(scaler)
     }
 
@@ -252,35 +238,34 @@ impl<'a> MinMaxScaler<'a> {
         Ok(tensor)
     }
     pub fn get_scaler_dir(&self,mode:&str) -> Result<String>{
-        let path_str = format!("./scaler/{}",mode);
-        let dir_path = Path::new(&path_str);
-        if !dir_path.exists() {
-            println!("Creating directory: {}", dir_path.display());
-            std::fs::create_dir_all(&dir_path)?;
-        } else if dir_path.is_dir(){
-            println!("Directory already exists: {}", dir_path.display());
-        } else {
-            println!("Path exists but is not a directory: {}", dir_path.display());
-            return Err(anyhow::anyhow!("Path exists but is not a directory"));
-        }
-        Ok(path_str)
+    let path_str = format!("./scaler/{}",mode);
+    let dir_path = Path::new(&path_str);
+    if !dir_path.exists() {
+        println!("Creating directory: {}", dir_path.display());
+        std::fs::create_dir_all(&dir_path)?;
+    } else if dir_path.is_dir(){
+        println!("Directory already exists: {}", dir_path.display());
+    } else {
+        println!("Path exists but is not a directory: {}", dir_path.display());
+        return Err(anyhow::anyhow!("Path exists but is not a directory"));
     }
-    pub fn get_scaler_file_path(&self,mode:&str) -> Result<String>{
-        let dir_path = self.get_scaler_dir(mode)?;
-        let path_str = format!("{}/{}_scaler.bin", dir_path, mode);
-        let file_path = Path::new(&path_str);
-        if !file_path.exists() {
-            println!("Creating file: {}", file_path.display());
-            
-        } else if file_path.is_file(){
-            println!("File already exists: {}", file_path.display());
-        } else {
-            println!("Path exists but is not a file: {}", file_path.display());
-            return Err(anyhow::anyhow!("Path exists but is not a file"));
-        }
-        Ok(path_str)
+    Ok(path_str)
+}
+pub fn get_scaler_file_path(&self,mode:&str) -> Result<String>{
+    let dir_path = self.get_scaler_dir(mode)?;
+    let path_str = format!("{}/{}_scaler.bin", dir_path, mode);
+    let file_path = Path::new(&path_str);
+    if !file_path.exists() {
+        println!("Creating file: {}", file_path.display());
+        
+    } else if file_path.is_file(){
+        println!("File already exists: {}", file_path.display());
+    } else {
+        println!("Path exists but is not a file: {}", file_path.display());
+        return Err(anyhow::anyhow!("Path exists but is not a file"));
     }
-
+    Ok(path_str)
+}
     // fn partial_fit(&mut self, x: &Tensor) -> Result<()> {
     //     // max와 min 텐서 안전하게 가져오기
     //     let max_tensor = self.max.as_ref()
@@ -302,11 +287,12 @@ impl<'a> MinMaxScaler<'a> {
     // pub fn get_device(&self) -> &Device {
     //     &self.device
     // }
-    pub fn partial_fit(&mut self, x: &Tensor) -> Result<()> {
-        let (f, s) = x.dims2()?;
-        // println!("[scaler] x shape = [{},{}]",f,s);
+    fn partial_fit(&mut self, x: &Tensor) -> Result<()> {
         let current_min = x.min_keepdim(1)?;
-        let current_max  = x.max_keepdim(1)?;
+        let current_max: Tensor = x.max_keepdim(1)?;
+        // println!("[partial_fit]x = {:?}", x);
+        // println!("[partial_fit]current_min = {}", current_min);
+        // println!("[partial_fit]current_max = {}", current_max);
 
         if self.min.is_none() {
             self.min = Some(current_min);
@@ -333,114 +319,79 @@ impl<'a> MinMaxScaler<'a> {
             .as_ref()
             .ok_or_else(|| candle_core::Error::Msg("min tensor is None".to_string()))?;
         // println!("min_tensor = {:?}/{:?}", min_tensor.get(0)?.get(0),min_tensor.get(0)?.get(1));
-        let data_range = (max_tensor - min_tensor)?;//(50,1)
+        let data_range = (max_tensor - min_tensor)?;
         // println!("[partial_fit]data_range = {:?}", data_range);
-        // 
-        let eps = 1e-6f32;
-        let eps_tensor = Tensor::new(&[eps], self.device)?.broadcast_as(data_range.shape())?;
-        let data_range_safe = data_range.maximum(&eps_tensor)?;
-        self.data_range = Some(data_range_safe.clone());
-        let scale_factor = (self.feature_range.1 - self.feature_range.0) as f32;//(1,1)
+        self.data_range = Some(data_range.clone());
+        let scale_factor = (self.feature_range.1 - self.feature_range.0) as f32;
         let scale_tensor = Tensor::new(&[scale_factor], self.device)?
             .reshape((1, 1))?
-            .broadcast_as(data_range_safe.shape())?;//(50,1)
-            // .broadcast_as(data_range.shape())?;
-
-        // let scale = (scale_tensor / &data_range)?;
-        // self.scale = Some(scale)?;
-        self.scale = Some(scale_tensor.broadcast_div(&data_range_safe)?); //(50,1)
-        let min_tensor = self.min.as_ref().unwrap();
-        let offset = Tensor::new(&[self.feature_range.0], self.device)?
-                            .reshape((1,1))?
-                            .broadcast_sub(&(min_tensor.broadcast_mul(self.scale.as_ref().unwrap())?))?;
-        self.min_offset = Some(offset);
+            .broadcast_as(data_range.shape())?;
+        let scale = (scale_tensor / &data_range)?;
+        self.scale = Some(scale);
 
         Ok(())
     }
+    pub fn inverse_transform(&self, xn: &Tensor) -> Result<Tensor> {
+        let min_tensor = self
+            .min
+            .as_ref()
+            .ok_or_else(|| candle_core::Error::Msg("min tensor is None".to_string()))?
+            .broadcast_as(xn.shape())?;
+        let max_tensor = self
+            .max
+            .as_ref()
+            .ok_or_else(|| candle_core::Error::Msg("max tensor is None".to_string()))?
+            .broadcast_as(xn.shape())?;
+        
+        let offset = Tensor::new(&[self.feature_range.0], &self.device)?
+            .reshape((1, 1))?
+            .broadcast_as(xn.shape());
 
-    pub fn transform(&self, x: &Tensor) -> Result<Tensor> {
-        // let min_tensor = self
-        //     .min
-        //     .as_ref()
-        //     .ok_or_else(|| candle_core::Error::Msg("min tensor is None".to_string()))?
-        //     .broadcast_as(x.shape())?;
+        let diff = (xn - offset)?;
+
+        let data_range = (max_tensor - min_tensor)?;
+        let scale_factor = (self.feature_range.1 - self.feature_range.0) as f32;
+        let scale_tensor = Tensor::new(&[scale_factor], self.device)?
+            .reshape((1, 1))?
+            .broadcast_as(data_range.shape())?;
+        let inv_scale = (data_range / &scale_tensor)?;
+        let inv_scale_tensor = 
+            inv_scale
+            .as_ref()
+            .broadcast_as(diff.shape())?;
+        // .ok_or_else(|| candle_core::Error::Msg("x - min is None".to_string()))?;
+        let inv_scaled = (diff * inv_scale_tensor)?;
+        let min_tensor2 = self
+            .min
+            .as_ref()
+            .ok_or_else(|| candle_core::Error::Msg("min tensor is None".to_string()))?
+            .broadcast_as(inv_scaled.shape())?;
+
+        let result = (inv_scaled + min_tensor2)?;
+        Ok(result)
+    }
+    fn transform(&self, x: &Tensor) -> Result<Tensor> {
+        let min_tensor = self
+            .min
+            .as_ref()
+            .ok_or_else(|| candle_core::Error::Msg("min tensor is None".to_string()))?
+            .broadcast_as(x.shape())?;
         let scale_tensor = self
             .scale
             .as_ref()
             .ok_or_else(|| candle_core::Error::Msg("scale_tensor tensor is None".to_string()))?
             .broadcast_as(x.shape())?;
-        let offset = self.min_offset
-            .as_ref()
-            .ok_or_else(|| candle_core::Error::Msg("min_offset is None".to_string()))?
-            .broadcast_as(x.shape())?;
-
-        Ok((x.broadcast_mul(&scale_tensor)? + offset)?.detach())
-        // (x - min) * scale  + offset
-        // let diff = (x - min_tensor)?;
-        // let diff = x.broadcast_sub(&min_tensor)?;
+        let diff = (x - min_tensor)?;
         // .ok_or_else(|| candle_core::Error::Msg("x - min is None".to_string()))?;
-        // let scaled = (diff * scale_tensor)?;
-        // let scaled = diff.broadcast_mul(&scale_tensor)?;
-        // let offset = Tensor::new(&[self.feature_range.0], &self.device)?
-            // .reshape((1, 1))?
-            // .broadcast_as(scaled.shape())?;
+        let scaled = (diff * scale_tensor)?;
+        let offset = Tensor::new(&[self.feature_range.0], &self.device)?
+            .reshape((1, 1))?
+            .broadcast_as(scaled.shape());
 
-        // let result = (scaled + offset)?.detach();
-        // Ok(result)
+        let result = (scaled + offset)?;
+        Ok(result)
     }
-    pub fn inverse_transform(&self, xn: &Tensor) -> Result<Tensor> {
-        let scale = self.scale
-            .as_ref()
-            .ok_or_else(|| candle_core::Error::Msg("Scale is None".to_string()))?
-            .broadcast_as(xn.shape())?;
-        let offset = self.min_offset
-            .as_ref()
-            .ok_or_else(|| candle_core::Error::Msg("min_offset is None".to_string()))?
-            .broadcast_as(xn.shape())?;
 
-        Ok((xn.broadcast_sub(&offset)?).broadcast_div(&scale)?.detach())
-    }
-    // fn inverse_transform(&self, xn: &Tensor) -> Result<Tensor> {
-    //     let min_tensor = self
-    //         .min
-    //         .as_ref()
-    //         .ok_or_else(|| candle_core::Error::Msg("min tensor is None".to_string()))?
-    //         .broadcast_as(xn.shape())?;
-    //     let max_tensor = self
-    //         .max
-    //         .as_ref()
-    //         .ok_or_else(|| candle_core::Error::Msg("max tensor is None".to_string()))?
-    //         .broadcast_as(xn.shape())?;
-        
-    //     let offset = Tensor::new(&[self.feature_range.0], &self.device)?
-    //         .reshape((1, 1))?
-    //         .broadcast_as(xn.shape());
-
-    //     let diff = (xn - offset)?;
-
-    //     let data_range = (max_tensor - min_tensor)?;
-    //     let scale_factor = (self.feature_range.1 - self.feature_range.0) as f32;
-    //     let scale_tensor = Tensor::new(&[scale_factor], self.device)?
-    //         .reshape((1, 1))?
-    //         .broadcast_as(data_range.shape())?;
-    //     // let eps = Tensor::new(&[1e-6f32],self.device)?;
-
-    //     let inv_scale = (data_range / &scale_tensor)?;
-    //     let inv_scale_tensor = 
-    //         inv_scale
-    //         .as_ref()
-    //         .broadcast_as(diff.shape())?;
-    //     // .ok_or_else(|| candle_core::Error::Msg("x - min is None".to_string()))?;
-    //     let inv_scaled = (diff * inv_scale_tensor)?;
-    //     let min_tensor2 = self
-    //         .min
-    //         .as_ref()
-    //         .ok_or_else(|| candle_core::Error::Msg("min tensor is None".to_string()))?
-    //         .broadcast_as(inv_scaled.shape())?;
-
-    //     let result = (inv_scaled + min_tensor2)?;
-    //     Ok(result)
-    // }
     fn fit_transform(&mut self, x: &Tensor) -> Result<Tensor> {
         self.partial_fit(x)?;
         self.transform(x)
@@ -612,12 +563,12 @@ fn read_parquet_to_tensors(
 fn read_bin_to_tensors(
     file_path: &str,
     device: &Device,
-) -> anyhow::Result<(HashMap<String, Tensor>, HashMap<String, usize>, Vec<String>)> {
+) -> anyhow::Result<(HashMap<String, Tensor>, HashMap<String, usize>)> {
 
     println!("[read_parquet_to_tensors] file_path = {}", file_path);
 
 
-    let (tensor_map , len_map, shotnum_vec) = load_bin(file_path)?;
+    let (tensor_map , len_map) = load_bin(file_path)?;
     // let mut len_map: HashMap<String, usize> = HashMap::new();
 
     println!("[read_parquet_to_tensors] make tensor_map, len_map done ");
@@ -641,7 +592,7 @@ fn read_bin_to_tensors(
     println!( "t4 ({}s)",dt4.as_secs_f64(),);
     println!("[read_parquet_to_tensors] tensor_map2 len = {} done", tensor_map2.len());
 
-    Ok((tensor_map2, len_map,shotnum_vec))
+    Ok((tensor_map2, len_map))
 }
 fn truncate_tensor(tensor: &Tensor, min_cols: usize) -> Result<Tensor> {
     let shape = tensor.dims().to_vec();
@@ -900,9 +851,12 @@ fn save_tensors_to_bin(
             // let truncated_tensor = truncate_tensor(tensor,  min_cols)?;
             let shot_num = shotnum_vec.get(tensor_idx).unwrap();
             // println!("shot num is {}", shot_num);
+
             let tensor_len = tensor.shape().dims()[1];
             // println!("tensor shape = {:?}", tensor.shape());
+
             let padded_tensor = pad_tensor(tensor, max_cols)?;
+
             // CPU로 이동하고 데이터 추출
             // let tensor_cpu = truncated_tensor.to_device(&Device::Cpu)?;
             let tensor_cpu = padded_tensor.to_device(&Device::Cpu)?;
@@ -913,9 +867,8 @@ fn save_tensors_to_bin(
         let  bdata = binData{
             data:datahash,
             len:lenhash,
-            shotnums:shotnum_vec,
         };
-        save_bin(&bdata.data,&bdata.len, &bdata.shotnums,&file_path[..])?;
+        save_bin(&bdata.data,&bdata.len, &file_path[..])?;
     
     Ok(())
 }
@@ -936,170 +889,6 @@ fn run_avg_downsample(in_data: Vec<f32>, win_size: usize) -> Result<Vec<f32>> {
     }
     return Ok(result);
 }
-/// Vec<f64>를 ndarray의 SliceInfoElem을 이용하여 q 간격으로 샘플링하여 새로운 Vec<f64>를 만듭니다.
-///
-/// # Arguments
-/// * `data` - 원본 Vec<f64> 참조.
-/// * `q` - 샘플링 간격 (스텝). q가 0이면 패닉 발생.
-///
-/// # Returns
-/// 샘플링된 Vec<f64>.
-pub fn sample_vec_with_slice_info(data: &Vec<f64>, q: usize) -> Vec<f64> {
-    if q == 0 {
-        panic!("Sampling factor 'q' cannot be zero");
-    }
-
-    // 1. Vec<f64>를 Array1<f64>로 변환 (뷰를 생성하여 복사 방지)
-    // from_vec_dim_val는 데이터를 소유권 이전하므로, 여기서는 from_vec 대신 view를 사용합니다.
-    let arr: Array1<f64> = Array1::from_vec(data.clone()); // Vec을 소유해야 하므로 clone()을 사용
-
-    // 또는, 더 효율적으로 &Vec<f64>를 View로 사용:
-    // let arr: ArrayView1<f64> = ArrayView::from_shape(data.len(), data).unwrap();
-    // 이 경우 반환 타입은 Array1<f64> 대신 Array<f64, Ix1> (혹은 View)이 되어야 합니다.
-    // 여기서는 최종적으로 Vec<f64>를 반환해야 하므로 ToOwned trait이 필요해서 위 Array1::from_vec(data.clone())를 사용합니다.
-
-    // 2. 슬라이스 정보 생성 및 슬라이싱 수행
-    // ndarray::s![] 매크로를 사용하여 슬라이스 정보를 만듭니다.
-    let sampled_arr: Array1<f64> = arr.slice(ndarray::s![..;q as isize]).to_owned();
-
-    // 4. Array1<f64>를 다시 Vec<f64>로 변환
-    sampled_arr.into_iter().collect()
-}
-
-pub struct MinMaxScalerPy{
-    scaler:Py<PyAny>,
-}
-impl MinMaxScalerPy{
-    pub fn new(py: Python<'_>)->PyResult<Self> {
-        
-        let sklearn = PyModule::import(py,"sklearn.preprocessing")?;
-        let scaler_cls = sklearn.getattr("MinMaxScaler")?;
-        let scaler = scaler_cls.call1(((-1.0,1.0),))?;
-        Ok(Self{
-            scaler:scaler.unbind(),
-        })
-        
-    }
-    // Python::with_gil(|py| -> PyResult<()> {
-    //     let scaler = MinMaxScalerPy::new(py)?;
-    //     scaler.partial_fit(py, &data)?;
-    //     scaler.save(py, "scaler.joblib")?;
-    //     Ok(())
-    // })?;
-
-    pub fn save(&self,py: Python<'_>,path:&str)->PyResult<()>{
-        let joblib = PyModule::import(py,"joblib")?;
-        let scaler = self.scaler.bind(py);
-        joblib.call_method1("dump",(scaler,path,))?;
-        Ok(())
-    }
-    // Python::with_gil(|py| -> PyResult<()> {
-    //     let scaler = MinMaxScalerPy::load(py, "scaler.joblib")?;
-    //     let scaled = scaler.transform(py, &data)?;
-    //     Ok(())
-    // })?;
-    pub fn load(py: Python<'_>,path:&str)->PyResult<Self>{
-        let joblib = PyModule::import(py,"joblib")?;
-        let scaler = joblib.call_method1("load",(path,))?;
-        Ok(Self{
-            scaler:scaler.unbind(),
-        })
-    }
-    pub fn partial_fit(&self,py: Python<'_>,data:&Vec<Vec<f32>>) -> PyResult<()>{
-        // let x: &PyArray2<f64> = data.into_pyarray(py);
-        let np = PyModule::import(py,"numpy")?;
-        let x_py = data.into_pyobject(py)?;
-        let x_np = np.getattr("array")?.call1((&x_py,))?;
-
-        let scaler = self.scaler.bind(py);
-        scaler.call_method1("partial_fit",(x_np,))?;
-        Ok(())
-    }
-    pub fn transform(&self,
-        py: Python<'_>,
-        data: &Vec<Vec<f32>>,
-    )-> PyResult<Vec<Vec<f32>>>{
-        let np = PyModule::import(py,"numpy")?;
-        let x_py = data.into_pyobject(py)?;
-        let x_np = np.getattr("array")?.call1((&x_py,))?;
-
-        let scaler = self.scaler.bind(py);
-        let x_scaled = scaler.call_method1("transform",(x_np,))?;
-
-        let x_list = x_scaled.call_method0("tolist")?;
-        let result: Vec<Vec<f32>> = x_list.extract()?;
-        Ok(result)
-
-        // let x_scaled: &PyArray2<f64> = x_scaled.extract()?;
-
-        // Ok(x_scaled.readonly().as_array().outer_iter().map(|row| row.to_vec()).collect())
-    }
-}
-
-fn decimate_scipy(x:&Vec<f64>,q:usize)->Vec<f64>{
-    Python::attach(|py|
-    {
-        // numpy or scipy.signal import
-        let np = PyModule::import(py,"numpy").expect("Failed to import numpy");
-        let sig = PyModule::import(py,"scipy.signal").expect("Failed to import scipy.signal");
-
-        // Rust Vec -> Numpy array
-        // x_np = np.array(x)
-        // let x_np = np.getattr("array").unwrap().call1((x,)).expect("numpy.array failed");
-        let x_np = np.getattr("array").unwrap().call1((x,)).expect("numpy.array failed");
-        // Scipy decimate default parameters: ftype="iir", zero_phase=True
-        // let kwargs = [
-        //     ("ftype", "iir".into_py(py)),
-        //     ("zero_phase", true.into_py(py)),
-        // ].into_py_dict(py);
-        let args = (x_np, q);
-        let y_np = sig
-                    .getattr("decimate").unwrap()
-                    
-                    .call1(args)
-                    .expect("scipy.signal.decimate failed");
-        y_np.extract::<Vec<f64>>().expect("failed to convert numpy result to Vec<f64>")
-    })
-}
-// fn decimate(x:&Vec<f64>,q:usize)->Vec<f64>{
-//     let data_len = x.len();
-//     if data_len == 0  {
-//         return Vec::new();
-//     }
-//     if q == 0 {
-//         panic!("Downsampling factor 'q' cannot be zero");
-//     }
-//     // let x = x32.iter().map(|&v| v as f64).collect::<Vec<f64>>();
-//  // Example usage of cheby1_dyn with f64 (float)
-//     let n_order: usize = 8; // Filter order
-//     let ripple_passband: f64 = 0.05; // Passband ripple in dB
-
-//     // Critical frequency/frequencies.
-//     // For a lowpass filter, this is the cutoff frequency.
-//     // For a bandpass, it would be [low_cutoff, high_cutoff].
-//     let Wn = (0.8 as f64)/(q as f64); // Normalized cutoff frequency (0.0 to 1.0)
-//     let cutoff_frequency: Vec<f64> = vec![Wn]; // Normalized cutoff frequency (0.0 to 1.0)
-
-//     let filter_type = Some(FilterBandType::Lowpass);
-//     let analog_filter = Some(false); // Digital filter
-//     let output_format = Some(FilterOutputType::Sos); // Numerator/denominator polynomials
-//     let sampling_frequency: Option<f64> = None; // Normalized frequency, so no fs needed here
-
-//     let filter = sci_rs::signal::filter::design::cheby1_dyn(
-//         n_order,
-//         ripple_passband,
-//         cutoff_frequency,
-//         filter_type,
-//         analog_filter,
-//         output_format,
-//         sampling_frequency,
-//     );
-//     let DigitalFilter::Sos(sos) = filter else { panic!("Not SOS filter") };
-//     // let data = (0..100000).map(|i| i as f64);
-//     let filtered: Vec<f64> = sosfiltfilt_dyn(x.iter(), &sos.sos);
-//     let sampled = sample_vec_with_slice_info(filtered.as_ref(), q);
-//     sampled
-// }
 fn downsample_running_average(data: &Vec<f32>, window_size: usize) -> Result<Vec<f32>>{
     let data_len = data.len();
     if data_len == 0 || window_size == 0 {
@@ -1139,24 +928,9 @@ pub struct SCDataset_ {
     max_length: usize,
     device: Device,
 }
-
-pub struct SCShotDataset_ {
-    data: Tensor,
-    length: usize,
-    shotnum: String,
-    shotnum_index: usize,
-    data_window: usize,
-    batch_size: usize,
-    rng_seed: u64,
-    device: Device,
-}
 #[derive(Clone)]
 // pub struct SCDataset(Rc<SCDataset_>);
 pub struct SCDataset(Arc<SCDataset_>);
-#[derive(Clone)]
-// pub struct SCDataset(Rc<SCDataset_>);
-pub struct SCShotDataset(Arc<SCShotDataset_>);
-
 
 impl AsRef<SCDataset> for SCDataset {
     fn as_ref(&self) -> &SCDataset {
@@ -1166,19 +940,6 @@ impl AsRef<SCDataset> for SCDataset {
 
 impl std::ops::Deref for SCDataset {
     type Target = SCDataset_;
-    fn deref(&self) -> &Self::Target {
-        self.0.as_ref()
-    }
-}
-
-impl AsRef<SCShotDataset> for SCShotDataset {
-    fn as_ref(&self) -> &SCShotDataset {
-        self
-    }
-}
-
-impl std::ops::Deref for SCShotDataset {
-    type Target = SCShotDataset_;
     fn deref(&self) -> &Self::Target {
         self.0.as_ref()
     }
@@ -1196,8 +957,8 @@ impl SCDataset {
         let shotnum_vec: Vec<String> = data_map.iter().map(|(key, _)| String::from(key)).collect();
         let mut shotnum_indices: Vec<usize> = (0..shotnum_vec.len()).collect();
 
-        // let mut rng = rng();
-        shotnum_indices.shuffle(&mut rand::rng());
+        let mut rng = thread_rng();
+        shotnum_indices.shuffle(&mut rng);
 
         // // data_vec, length_vec code
         // let mut data_vec: Vec<Tensor> = Vec::new();
@@ -1346,55 +1107,6 @@ impl SCDataset {
 
 }
 
-
-impl SCShotDataset {
-    pub fn new(
-        data: Tensor,
-        length:  usize,
-        data_window: usize,
-        batch_size: usize,
-        shotnum: String,
-        shotnum_index: usize,
-        rng_seed:u64,
-        device: Device,
-    ) -> Self {
- 
-        // let augmenter = TimeSeriesAugmenter::new(device.clone(),Some(rng_seed));
-        // let aug_conf = AugmentationConfig::for_mild_overfitting();
-
-        // let augmented_tensors = aug.autoregressive_augment(&tensor, num_augmentations, &config)?;
-        let dataset_ = SCShotDataset_ {
-            data:data,
-            length: length,
-            data_window: data_window,
-            batch_size: batch_size,
-            shotnum: shotnum,
-            shotnum_index:shotnum_index,
-            rng_seed:rng_seed,
-            device: device,
-        };
-        Self(Arc::new(dataset_))
-    }
-    pub fn shuffle(&self) {
-        
-    }
-    pub fn len(&self) -> usize {
-        let len = self.length - (self.data_window - 1);
-        return len;
-    }
-
-    pub fn get_device(&self) -> &Device {
-        &self.device
-    }
-
-    pub fn get_shotnum(&self) -> String{
-        self.shotnum.clone()
-    }
-    pub fn get_tensor(&self,) -> anyhow::Result<(Tensor, usize)> {
-
-        Ok((self.data.clone(), self.length.clone()))
-    }
-}
 fn read_hdf5_data(
     mode: &str,
     scale_factor: usize,
@@ -1412,119 +1124,48 @@ fn read_hdf5_data(
     let shotnum_vec = shot_number_iter.clone().collect::<Vec<String>>();
 
     let mut tot_tensor_vec = Vec::<Tensor>::new();
-    println!("Loading HDF5 data and scale partial fit  :");
+    // for shotnum_str in shot_number_iter {
+    println!("Loading HDF5 data :");
     for shotnum_str in tqdm(shotnum_vec.iter()) {
         let shot_group = root_group.group(&shotnum_str[..])?;
         let member = shot_group.member_names()?;
 
-        let mut dacimated_tensor_vec = Vec::<Tensor>::new();
         let mut tensor_vec = Vec::<Tensor>::new();
 
         for tag in TAG_NAMES.iter() {
             if let Ok(tag_group) = shot_group.group(tag) {
                 if let Ok(dataset) = tag_group.dataset("val") {
                     
-                    let data = dataset.read_raw::<f64>().unwrap();
-                  
-                    let data64 = data.iter().map(|&v| v as f64).collect::<Vec<f64>>();
-                    let mut decimated_data64 = vec![];
-
-                    // if scale_factor > 10 {
-                    //     let sample_r = scale_factor / 10;
-                    //     let s_data = decimate_scipy(&data64, 10);
-                        
-                    //     decimated_data64 = decimate_scipy(&s_data, sample_r);
-                    // }else{
-                    //     decimated_data64 = decimate_scipy(&data64, scale_factor);
-                    // }
-                    let samp_r = scale_factor / 10;
-                    if samp_r > 1{
-                        let s_data = decimate_scipy(&data64, 10);
-                        decimated_data64 = decimate_scipy(&s_data, samp_r);
-                    }else{
-                        decimated_data64 = decimate_scipy(&data64, scale_factor)
-                    }
-
+                    let data = dataset.read_raw::<f32>().unwrap();
+                    // println!("data shape ={}", data.len());
+                    // let data_run_avg = run_avg_downsample(data.clone(), scale_factor)?;
+                    let data_run_avg = downsample_running_average(&data, scale_factor)?;
+                    
+                    // println!("data_run_avg shape ={}", data_run_avg.len());
                     let tensor = Tensor::from_vec(
-                        data.clone(),
-                        (1, data.len()),
-                        device,
-                    )?;
-                    let decimated_data = decimated_data64.iter().map(|&v| v as f32).collect::<Vec<f32>>();
-                    let dacimated_tensor = Tensor::from_vec(
-                        decimated_data.clone(),
-                        (1, decimated_data.len()),
+                        data_run_avg.clone(),
+                        (1, data_run_avg.len()),
                         device,
                     )?;
                     tensor_vec.push(tensor);
-                    dacimated_tensor_vec.push(dacimated_tensor);
                 }
             }
         }
 
-        let concat_tensor: Tensor = Tensor::cat(&tensor_vec, 0)?;
-        let concat_dacimated_tensor = Tensor::cat(&dacimated_tensor_vec, 0)?;
-
-
-        // println!("[shotnum {}]concat_tensor[11] ={:?}",shotnum_str,concat_tensor.get(0)?.narrow(0, 0, 300)?.to_vec1::<f64>()?);
-
-
-        // println!("{:?}", concat_tensor.shape());
-        scaler.partial_fit(&concat_dacimated_tensor)?;
-        // tot_tensor_vec.push(concat_tensor);
-        tot_tensor_vec.push(concat_dacimated_tensor);
+        let concat_tesnor = Tensor::cat(&tensor_vec, 0)?;
+        // println!("{:?}", concat_tesnor.shape());
+        scaler.partial_fit(&concat_tesnor)?;
+        tot_tensor_vec.push(concat_tesnor);
     }
-    scaler.save( mode);
-     println!("scale transform and decimate data  :");
-    let mut scaled_tot_tensor_vec = Vec::<Tensor>::new();
-    for tv in tqdm(tot_tensor_vec.iter()){
-        let sc_data = scaler.transform(tv).unwrap();
-
-
-        // let sc_vec2: Vec<Vec<f32>> = sc_data.to_vec2().unwrap();
-        // let mut dacimated_tensor_vec = Vec::<Tensor>::new();
-        // for (r_i, r) in sc_vec2.iter().enumerate() {
-        //     let data64 = r.iter().map(|&v| v as f64).collect::<Vec<f64>>();
-        //     let mut decimated_data64 = vec![];
-            
-        //     let samp_r = scale_factor / 10;
-        //     if samp_r > 1{
-        //         let s_data = decimate_scipy(&data64, 10);
-        //         decimated_data64 = decimate_scipy(&s_data, samp_r);
-        //     }else{
-        //         decimated_data64 = decimate_scipy(&data64, scale_factor)
-        //     }
-
-        //     // if scale_factor > 10 {
-        //     //     let sample_r = scale_factor / 10;
-        //     //     let s_data = decimate(&data64, 10);
-        //     //     decimated_data64 = decimate(&s_data, sample_r);
-        //     // }else{
-        //     //     decimated_data64 = decimate(&data64, scale_factor);
-            
-        //     // }
-        //     let decimated_data = decimated_data64.iter().map(|&v| v as f32).collect::<Vec<f32>>();
-        //     let dacimated_tensor = Tensor::from_vec(
-        //                     decimated_data.clone(),
-        //                     (1, decimated_data.len()),
-        //                     device,
-        //                 )?;   
-        //     dacimated_tensor_vec.push(dacimated_tensor);
-        // }
-        // let concat_dacimated_tensor = Tensor::cat(&dacimated_tensor_vec, 0)?;
-        // scaled_tot_tensor_vec.push(concat_dacimated_tensor);
-        
-        scaled_tot_tensor_vec.push(sc_data);
-    }
-    // let scaled_tot_tensor_vec= tot_tensor_vec
-    //     .iter()
-    //     .map(|tensor| {
-    //         // let scaled_tensor = scaler.transform(tensor).unwrap();
-    //         // scaled_tot_tensor_vec.push(scaled_tensor);
-    //     scaler.transform(tensor).unwrap()
- 
-    //     })
-    //     .collect::<Vec<_>>();
+    // let mut scaled_tot_tensor_vec = Vec::<Tensor>::new();
+    let scaled_tot_tensor_vec= tot_tensor_vec
+        .iter()
+        .map(|tensor| {
+            // let scaled_tensor = scaler.transform(tensor).unwrap();
+            // scaled_tot_tensor_vec.push(scaled_tensor);
+           scaler.transform(tensor).unwrap()
+        })
+        .collect::<Vec<_>>();
     println!("tot_tensor_vec[0]: {}", tot_tensor_vec[0]);
     println!("scaled_tot_tensor_vec[0]: {}", scaled_tot_tensor_vec[0]);
     println!(
@@ -1537,129 +1178,6 @@ fn read_hdf5_data(
     );
     // scaled_tot_tensor_vec,shotnum_vec,
     Ok((scaled_tot_tensor_vec, shotnum_vec))
-}
-pub fn tensor_to_vec2(t: &Tensor) -> anyhow::Result<Vec<Vec<f32>>> {
-    let t = t.to_device(&candle_core::Device::Cpu)?;
-    let data = t.to_vec2::<f32>()?;
-    Ok(data)
-}
-pub fn vec2_to_tensor(v: &Vec<Vec<f32>>, device: &Device) -> anyhow::Result<Tensor> {
-    let n = v.len();
-    let d = v[0].len();
-
-    let flat: Vec<f32> = v.iter().flat_map(|row| row.iter()).copied().collect();
-
-    Tensor::from_vec(flat, (n, d), device).map_err(Into::into) 
-}
-fn read_hdf5_data_pyscaler(
-    mode: &str,
-    scale_factor: usize,
-    device: &Device,
-) -> anyhow::Result<(Vec<Tensor>, Vec<String>)> {
-    println!("[read_hdf5_data] mode = {}", mode);
-   
-    Python::with_gil(|py| -> anyhow::Result<(Vec<Tensor>, Vec<String>)> 
-    {
-        let scaler = MinMaxScalerPy::new(py)?;
-        let path_str = format!("./dataset/{}/{}_data.hdf5", mode, mode);
-        println!("{:?}", path_str);
-
-        let file = hFile::open(path_str)?;
-        let root_group = file.group(&format!("/{}", mode)[..])?;
-        let mut shot_number_iter = root_group.member_names()?.into_iter();
-        let shotnum_vec = shot_number_iter.clone().collect::<Vec<String>>();
-
-        let mut tot_tensor_vec = Vec::<Tensor>::new();
-        println!("Loading HDF5 data and scale partial fit  :");
-
-        for shotnum_str in tqdm(shotnum_vec.iter()) {
-            let shot_group = root_group.group(&shotnum_str[..])?;
-            let member = shot_group.member_names()?;
-
-            let mut dacimated_tensor_vec = Vec::<Tensor>::new();
-            let mut tensor_vec = Vec::<Tensor>::new();
-
-            for tag in TAG_NAMES.iter() {
-                if let Ok(tag_group) = shot_group.group(tag) {
-                    if let Ok(dataset) = tag_group.dataset("val") {
-                        
-                        let data = dataset.read_raw::<f64>()?;
-                    
-                        let data64 = data.iter().map(|&v| v as f64).collect::<Vec<f64>>();
-                        let mut decimated_data64 = vec![];
-
-                        let samp_r = scale_factor / 10;
-                        if samp_r > 1{
-                            let s_data = decimate_scipy(&data64, 10);
-                            decimated_data64 = decimate_scipy(&s_data, samp_r);
-                        }else{
-                            decimated_data64 = decimate_scipy(&data64, scale_factor)
-                        }
-
-                        let tensor = Tensor::from_vec(
-                            data.clone(),
-                            (1, data.len()),
-                            device,
-                        )?;
-                        let decimated_data = decimated_data64.iter().map(|&v| v as f32).collect::<Vec<f32>>();
-                        let dacimated_tensor = Tensor::from_vec(
-                            decimated_data.clone(),
-                            (1, decimated_data.len()),
-                            device,
-                        ).map_err(anyhow::Error::from)?;
-                        tensor_vec.push(tensor);
-                        dacimated_tensor_vec.push(dacimated_tensor);
-                    }
-                }
-            }
-
-            let concat_tensor: Tensor = Tensor::cat(&tensor_vec, 0)?;
-            let concat_dacimated_tensor = Tensor::cat(&dacimated_tensor_vec, 0)?;
-            let concat_tensor_t = concat_tensor.transpose(0, 1)?;
-            let concat_dacimated_tensor_t = concat_dacimated_tensor.transpose(0, 1)?;
-
-            println!(
-                "[shotnum {}]concat_dacimated_tensor shape ={:?}",
-                shotnum_str,
-                concat_dacimated_tensor_t.shape()
-            );
-            // println!("[shotnum {}]concat_tensor[11] ={:?}",shotnum_str,concat_tensor.get(0)?.narrow(0, 0, 300)?.to_vec1::<f64>()?);
-
-
-            // println!("{:?}", concat_tensor.shape());
-            let vec_concat_dacimated_tensor = tensor_to_vec2(&concat_dacimated_tensor_t)?;
-            scaler.partial_fit(py,&vec_concat_dacimated_tensor)?;
-            // tot_tensor_vec.push(concat_tensor);
-            tot_tensor_vec.push(concat_dacimated_tensor_t);
-        }
-        println!("scale transform and decimate data  :");
-        let mut scaled_tot_tensor_vec = Vec::<Tensor>::new();
-        for tv in tqdm(tot_tensor_vec.iter()){
-            let vec_tv = tensor_to_vec2(tv)?;
-            let sc_data = scaler.transform(py, &vec_tv)?;
-            let sc_tensor = vec2_to_tensor(&sc_data, device)?;
-            let sc_tensor_t = sc_tensor.transpose(0, 1)?;
-            println!(
-            "sc_tensor_t shape ={:?}",
-            
-            sc_tensor_t.shape()
-            );
-            scaled_tot_tensor_vec.push(sc_tensor_t);
-        }
-        println!("tot_tensor_vec[0]: {}", tot_tensor_vec[0]);
-        println!("scaled_tot_tensor_vec[0]: {}", scaled_tot_tensor_vec[0]);
-        println!(
-            "scaled_tot_tensor_vec len: {:?}",
-            scaled_tot_tensor_vec.len()
-        );
-        println!(
-            "scaled_tot_tensor_vec shape: {:?}",
-            scaled_tot_tensor_vec[0].shape()
-        );
-        // scaled_tot_tensor_vec,shotnum_vec,
-        Ok((scaled_tot_tensor_vec, shotnum_vec))
-
-    })
 }
 use std::path::PathBuf;
 use std::{fs, io};
@@ -1692,50 +1210,9 @@ pub struct SCDatasetBuilder<'a> {
     device: &'a Device,
     data_window: usize,
     batch_size: usize,
-    rng_seed: u64,
-    samp_rate:usize,
-    num_augmentation:usize,
-    num_aug_point:usize,
 }
 impl<'a> SCDatasetBuilder<'a> {
-    pub fn get_shotnum_vec(&self) -> Option<&Vec<String>> {
-        self.shotnum_.as_ref()
-    }
-    // pub fn get_total_batch_num(&self) -> usize {
-    //     let num_shots = self.shotnum_.as_ref().unwrap().len();
-    //     println!("num_shots ={}/self.data_window = {}", num_shots, self.data_window);
-        
-    //     let mut total_len = 0_usize;
-    //     if let Some(length_map) = &self.length_ {
-    //         let shot_len = length_map.get(&self.shotnum_.as_ref().unwrap()[0]);
-            
-    //         if let Some(len) = shot_len {
-                
-    //             let batch_num = (len.clone()-self.data_window)/ self.batch_size;
-    //             println!("len = {}/ batch_num = {}",len, batch_num);
-    //             return batch_num * num_shots;
-    //         }
-    //     }
-    //     0
-    // }
-    pub fn get_total_len(&self) -> usize {
-        let num_shots = self.shotnum_.as_ref().unwrap().len();
-        println!("num_shots ={}/self.data_window = {}", num_shots, self.data_window);
-        
-        let mut total_len = 0_usize;
-        if let Some(length_map) = &self.length_ {
-            let shot_len = length_map.get(&self.shotnum_.as_ref().unwrap()[0]);
-            
-            if let Some(len) = shot_len {
-                
-                let batch_num = (len.clone()-self.data_window)/ self.batch_size;
-                println!("len = {}/ batch_num = {}",len, batch_num);
-                return batch_num * num_shots;
-            }
-        }
-        0
-    }
-    pub fn new(mode: &str, device: &'a Device, data_window: usize,batch_size: usize,rng_seed:u64,samp_rate:usize,num_augmentation:usize,num_aug_point:usize,) -> Self {
+    pub fn new(mode: &str, device: &'a Device, data_window: usize,batch_size: usize) -> Self {
             Self {
                 data_: None,
                 length_: None,
@@ -1744,16 +1221,19 @@ impl<'a> SCDatasetBuilder<'a> {
                 device,
                 data_window: data_window,
                 batch_size: batch_size,
-                rng_seed:rng_seed,
-                samp_rate:samp_rate,
-                num_augmentation:num_augmentation,
-                num_aug_point:num_aug_point,
             }
         }
-
+    // pub fn get_device(&self) -> &Device {
+    //     &self.device
+    // }
     pub fn load_data(mut self) -> Self {
         println!("[load_data] mode = {}", self.mode);
+        // let dir_path = format!("./parquet/{}_data",self.mode);
+        // let file_name = format!("{}_{}_data.parquet", self.mode, 3usize);
+        // let file_path = format!("{}/{}", dir_path, file_name);
 
+        
+        // let data_file_path = Path::new(&file_path[..]);
         let dir_path = match get_bin_dir(&self.mode[..]){
             Ok(path) => {
                 println!("Success get get_bin_dirs {}", path.clone());
@@ -1777,35 +1257,60 @@ impl<'a> SCDatasetBuilder<'a> {
         let mut shotnum_vec: Vec<String> = Vec::new();
         let mut scaled_tot_tensor_vec: Vec<Tensor> = Vec::new();
         if !data_file_path.exists() {
-            
+            // let (scaled_tot_tensor_vec_, shotnum_vec_) = read_hdf5_data(&self.mode[..],100,self.device)?;
             let (scaled_tot_tensor_vec_, shotnum_vec_) =
-                match read_hdf5_data(&self.mode[..], self.samp_rate, &Device::Cpu) {
+                match read_hdf5_data(&self.mode[..], 100, &Device::Cpu) {
                     Ok((scaled_tot_tensor_vec_, shotnum_vec_)) => {
                         (scaled_tot_tensor_vec_, shotnum_vec_)
                     }
                     Err(e) => {
+                        // println!("Error reading HDF5 data: {}", e);
+                        // return self;
                         panic!("Error reading HDF5 data: {}", e);
                     }
                 };
-
+            // save_tensors_to_parquet(&scaled_tot_tensor_vec_,shotnum_vec_.clone(), &format!("{}_data.parquet",self.mode)[..])?;
+            // match save_tensors_to_parquet(
+            //     &scaled_tot_tensor_vec_,
+            //     shotnum_vec_.clone(),
+            //     &format!("./parquet/{}_data", self.mode)[..],
+            //     &self.mode[..],
+            //     &Device::Cpu,
+            //     // &format!("{}_data.parquet", self.mode)[..],
+            // ) {
+            //     Ok(()) => {
+            //         println!("Success saving tensor to {}_data.parquet", self.mode);
+            //     }
+            //     Err(e) => {
+            //         panic!("Error saving tensors to  {}_data.parquet {}", self.mode, e);
+            //     }
+            // };
             match save_tensors_to_bin(
                 &scaled_tot_tensor_vec_,
                 shotnum_vec_.clone(),
                 &self.mode[..],
                 &Device::Cpu,
-                // &format!("{}_data.bin", self.mode)[..],
+                // &format!("{}_data.parquet", self.mode)[..],
             ) {
                 Ok(()) => {
-                    println!("Success saving tensor to {}_data.bin", self.mode);
+                    println!("Success saving tensor to {}_data.parquet", self.mode);
                 }
                 Err(e) => {
-                    panic!("Error saving tensors to  {}_data.bin {}", self.mode, e);
+                    panic!("Error saving tensors to  {}_data.parquet {}", self.mode, e);
                 }
             };
             shotnum_vec = shotnum_vec_;
             scaled_tot_tensor_vec = scaled_tot_tensor_vec_;
         }
-
+        // let dir_path = match get_bin_dir(&self.mode[..]){
+        //     Ok(path) => {
+        //         println!("Success get get_bin_dirs {}", path.clone());
+        //         path
+        //     }
+        //     Err(e) => {
+        //         panic!("Error get get_bin_dirs {}", e);
+        //     }
+        // };
         let file_path_vec 
             = match get_binfile_paths_in_folder(&dir_path[..]){
                 Ok(file_vec) => {
@@ -1819,31 +1324,47 @@ impl<'a> SCDatasetBuilder<'a> {
         
         let mut out_tensor_map : HashMap<String, Tensor> = HashMap::new();
         let mut out_len_map : HashMap<String, usize> = HashMap::new();
-        let mut shotnum_vec_final: Vec<String> = Vec::new();
         for f_path in file_path_vec {
             println!("[SCDatasetBuilder][load_data]{}", f_path);
-
+        // let (tensor_map2, len_map) = read_parquet_to_tensors(&format!("{}_data.parquet", MODES[1])[..])?;
             let t5 = std::time::Instant::now();
-            let (tensor_map2, len_map, sn_vec) =
+            // let (tensor_map2, len_map) =
+            //     // match read_parquet_to_tensors(&format!("{}_data.parquet", self.mode)[..]) {
+                    
+            //     match read_parquet_to_tensors(&f_path[..],&self.device) {
+
+            //         Ok((tensor_map2, len_map)) => (tensor_map2, len_map),
+            //         Err(e) => {
+            //             // println!("Error reading HDF5 data: {}", e);
+            //             // return self;
+            //             panic!("Error reading {}_data.parquet data: {}", self.mode, e);
+            //         }
+  
+            //     };
+            let (tensor_map2, len_map) =
+              
                 match read_bin_to_tensors(&f_path[..],&self.device) {
-                    Ok((tensor_map2, len_map, shotnum_vec)) => (tensor_map2, len_map, shotnum_vec),
+
+                    Ok((tensor_map2, len_map)) => (tensor_map2, len_map),
                     Err(e) => {
+                        // println!("Error reading HDF5 data: {}", e);
+                        // return self;
                         panic!("Error reading {}_data.parquet data: {}", self.mode, e);
                     }
+  
                 };
             let dt5 = t5.elapsed();
-            println!( "read_bin_to_tensors:{} t5 ({}s)",f_path,dt5.as_secs_f64(),);
+            println!( "read_parquet_to_tensors:{} t5 ({}s)",f_path,dt5.as_secs_f64(),);
                 out_tensor_map.extend(tensor_map2);
                 out_len_map.extend(len_map);
-                shotnum_vec_final.extend(sn_vec.clone());
+
         }
 
         self.data_ = Some(out_tensor_map);
         self.length_ = Some(out_len_map);
-        self.shotnum_ = Some(shotnum_vec_final);
+        self.shotnum_ = Some(shotnum_vec);
         self
     }
-
     pub fn build(&self) -> SCDataset {
         // let t6 = std::time::Instant::now();
         if let Some(data_) = &self.data_ {
@@ -1860,162 +1381,6 @@ impl<'a> SCDatasetBuilder<'a> {
         // let dt6 = t6.elapsed();
         // println!( "SCDataset::new() t6 ({}s)",dt6.as_secs_f64(),);
     }
-    // impl SCShotDataset {
-    // pub fn new(
-    //     data: Tensor,
-    //     length:  usize,
-    //     data_window: usize,
-    //     batch_size: usize,
-    //     shotnum: String,
-    //     shotnum_index: usize,
-    //     device: Device,
-    // ) 
-
-     pub fn build_shotdata(&self) -> Vec<SCShotDataset> {
-        // let t6 = std::time::Instant::now();
-        if let Some(data_map) = &self.data_ {
-            let mut shotnum_vec = self.shotnum_.clone().unwrap();
-            // let mut shotnum_vec = self.shotnum_.as_ref().unwrap();
-
-            // let mut rng: rand::prelude::ThreadRng = thread_rng();
-            shotnum_vec.shuffle(&mut rand::rng());
-
-            let len = shotnum_vec.len();
-            println!("[SCDatasetBuilder][build_shotdata] shotnum_vec len = {}", len);
-            let mut shotdata_vec = Vec::with_capacity(len);
-            if let Some(length_map) = &self.length_ {
-
-                for (idx,sn) in shotnum_vec.iter().enumerate() 
-                {
-                    let data = data_map.get(sn.as_str()).unwrap();
-                    let len = length_map.get(sn.as_str()).unwrap();
-                    
-                    let scshot = SCShotDataset::new(
-                        data.clone(),
-                        len.clone(),
-                        self.data_window,
-                        self.batch_size,
-                        sn.clone(),
-                        idx, // shotnum_index
-                        self.rng_seed,
-                        self.device.clone(),
-                    );
-                    shotdata_vec.push(scshot);
-                    // println!("[build_shotdata]data.clone().shape = {:?}",data.clone().shape());
-                //     let mut augmenter = TimeSeriesAugmenter::new(self.device.clone(),Some(self.rng_seed));
-                //     let conf = AugmentationConfig::for_mild_overfitting();
-                   
-                //    if self.num_augmentation > 0{
-                //         for (idx,a) in (0..self.num_augmentation).enumerate(){
-                //             let aug_tensors = match augmenter.autoregressive_augment(data,self.num_aug_point,  &conf) {
-                //                     Ok(tensors) => tensors,
-                //                     Err(e) => {
-                //                         panic!("Augmentation failed for shot {}: {}", sn, e);
-                            
-                //                     }
-                //                 };
-                //                 // println!("[build_shotdata]aug_tensors.shape = {:?}",aug_tensors.shape());
-                //                 let shotnum = format!("{}{}",sn.clone(),idx);
-                //                 let scshot = SCShotDataset::new(
-                //                     aug_tensors,
-                //                     len.clone(),
-                //                     self.data_window,
-                //                     self.batch_size,
-                //                     shotnum,
-                //                     idx, // shotnum_index
-                //                     self.rng_seed,
-                //                     self.device.clone(),
-                //                 );
-                //                 shotdata_vec.push(scshot);
-                //         }
-                //     }
-                    
-                }
-                return shotdata_vec;
-                
-            } else {
-                panic!("length hashmap is not set SCDatasetBuilder.");
-            }
-
-        } else {
-            panic!("data hashmap is not set SCDatasetBuilder.");
-        }
-        // let dt6 = t6.elapsed();
-        // println!( "SCDataset::new() t6 ({}s)",dt6.as_secs_f64(),);
-    }
-     pub fn build_shotdata_test(&self) -> Vec<SCShotDataset> {
-        // let t6 = std::time::Instant::now();
-        if let Some(data_map) = &self.data_ {
-            let mut shotnum_vec = self.shotnum_.clone().unwrap();
-            // let mut shotnum_vec = self.shotnum_.as_ref().unwrap();
-
-            // let mut rng: rand::prelude::ThreadRng = thread_rng();
-            // shotnum_vec.shuffle(&mut rand::rng());
-
-            let len = shotnum_vec.len();
-            println!("[SCDatasetBuilder][build_shotdata] shotnum_vec len = {}", len);
-            let mut shotdata_vec = Vec::with_capacity(len);
-            if let Some(length_map) = &self.length_ {
-
-                for (idx,sn) in shotnum_vec.iter().enumerate() 
-                {
-                    let data = data_map.get(sn.as_str()).unwrap();
-                    let len = length_map.get(sn.as_str()).unwrap();
-                    
-                    let scshot = SCShotDataset::new(
-                        data.clone(),
-                        len.clone(),
-                        self.data_window,
-                        self.batch_size,
-                        sn.clone(),
-                        idx, // shotnum_index
-                        self.rng_seed,
-                        self.device.clone(),
-                    );
-                    shotdata_vec.push(scshot);
-                    // println!("[build_shotdata]data.clone().shape = {:?}",data.clone().shape());
-                //     let mut augmenter = TimeSeriesAugmenter::new(self.device.clone(),Some(self.rng_seed));
-                //     let conf = AugmentationConfig::for_mild_overfitting();
-                   
-                //    if self.num_augmentation > 0{
-                //         for (idx,a) in (0..self.num_augmentation).enumerate(){
-                //             let aug_tensors = match augmenter.autoregressive_augment(data,self.num_aug_point,  &conf) {
-                //                     Ok(tensors) => tensors,
-                //                     Err(e) => {
-                //                         panic!("Augmentation failed for shot {}: {}", sn, e);
-                            
-                //                     }
-                //                 };
-                //                 // println!("[build_shotdata]aug_tensors.shape = {:?}",aug_tensors.shape());
-                //                 let shotnum = format!("{}{}",sn.clone(),idx);
-                //                 let scshot = SCShotDataset::new(
-                //                     aug_tensors,
-                //                     len.clone(),
-                //                     self.data_window,
-                //                     self.batch_size,
-                //                     shotnum,
-                //                     idx, // shotnum_index
-                //                     self.rng_seed,
-                //                     self.device.clone(),
-                //                 );
-                //                 shotdata_vec.push(scshot);
-                //         }
-                //     }
-                    
-                }
-                return shotdata_vec;
-                
-            } else {
-                panic!("length hashmap is not set SCDatasetBuilder.");
-            }
-
-        } else {
-            panic!("data hashmap is not set SCDatasetBuilder.");
-        }
-        // let dt6 = t6.elapsed();
-        // println!( "SCDataset::new() t6 ({}s)",dt6.as_secs_f64(),);
-    }
-
 }
 pub struct SCDatasetIter<'a> {
     dataset: SCDataset,
@@ -2046,8 +1411,8 @@ impl<'a> SCDatasetIter<'a> {
         // println!( "indexing time  ({}s)",ind_dt.as_secs_f64(),);
         // println!("remaining_indices = {}",remaining_indices.len());
         if shuffle {
-            // let mut rng = thread_rng();
-            remaining_indices.shuffle(&mut rand::rng());
+            let mut rng = thread_rng();
+            remaining_indices.shuffle(&mut rng);
         }
 
         Self {
@@ -2061,21 +1426,20 @@ impl<'a> SCDatasetIter<'a> {
     pub fn create_xy_seq(&self, i: usize, tensor: &Tensor) -> anyhow::Result<(Tensor, Tensor)> {
         let data_len = tensor.dims()[1] as usize;
         let chan_dim = tensor.dims()[0] as usize;
-        let in_win = self.input_window;
-        let out_win = self.output_window;
+
         // println!("chan_dim /data_len/i = {}/{}/{}", chan_dim, data_len, i);
-        let shape = (chan_dim, (in_win + out_win));
+        let shape = (chan_dim, 1);
         let mut x = Tensor::zeros(shape, candle_core::DType::F32, self.device)?;
         let mut y = Tensor::zeros(shape, candle_core::DType::F32, self.device)?;
 
-        if i >= (data_len - (in_win + out_win - 1)) {
+        if i >= data_len {
             anyhow::bail!(format!(
-                "creae_xy_seq has wrong index i: {}[data_len: {}, in/out_win: {}/{}]",
-                i, data_len, in_win, out_win
+                "creae_xy_seq has wrong index i: {}[data_len: {}]",
+                i, data_len
             ));
         }
         // println!("[create_xy_seq] tensor = {}",tensor);
-        let x_slice = tensor.narrow(1, i, in_win)?; //.contiguous()?;
+        let x_slice = tensor.narrow(1, i, 1)?; //.contiguous()?;
                                                     // (0..chan_dim, i..(i+in_win)));
         // println!(
         //     "debug1 data_len/in/out_len{}{}{}",
@@ -2083,12 +1447,12 @@ impl<'a> SCDatasetIter<'a> {
         // );
         // println!("tesnsor shape = {:?}", tensor.shape());
         // println!("x_slice shape {:?}", x_slice.shape());
-        let x_out = x.slice_assign(&[0..chan_dim, 0..in_win], &x_slice)?;
+        let x_out = x.slice_assign(&[0..chan_dim, 0..1], &x_slice)?;
 
-        let y_slice = tensor.narrow(1, i, in_win + out_win)?.contiguous()?;
+        let y_slice = tensor.narrow(1, i, 1)?.contiguous()?;
         // (0..chan_dim, i..(i+in_win+out_win))?;
         // println!("y_slice shape {:?}", y_slice.shape());
-        let y_out = y.slice_assign(&[0..chan_dim, 0..in_win + out_win], &y_slice)?;
+        let y_out = y.slice_assign(&[0..chan_dim, 0..1], &y_slice)?;
         // let x = tensor.slice(0, sub_idx as i64, self.dataset.data_window as i64);
         // let y = tensor.slice(0, (sub_idx + 1) as i64, 1);
         // println!("[create_xy_seq] x = {}",x);
@@ -2116,110 +1480,6 @@ impl<'a> Iterator for SCDatasetIter<'a> {
                 Ok((x, y)) => Some(Ok((x, y))),
                 Err(e) => {
                     println!("create_xy_seq if fail at index {}:{}", sub_idx, e);
-                    None
-                }
-            }
-            // Some((main_idx, sub_idx, tensor, len))
-        } else {
-            None
-        }
-    }
-}
-
-pub struct SCShotDatasetIter<'a> {
-    dataset: SCShotDataset,
-    remaining_indices: Vec<usize>,
-    input_window: usize,
-    output_window: usize,
-    device: &'a Device,
-}
-impl<'a> SCShotDatasetIter<'a> {
-    pub fn new(
-        dataset: SCShotDataset,
-        shuffle: bool,
-        input_window: usize,
-        output_window: usize,
-        device: &'a Device
-    ) -> Self {
-        let mut remaining_indices: Vec<usize> = (0..dataset.len()).rev().collect::<Vec<_>>();
-        let mut remaining_indices_rev: Vec<usize> = Vec::with_capacity(dataset.len());
-        // let ind_time = std::time::Instant::now();
-
-        // let ind_dt = ind_time.elapsed();
-        // println!( "indexing time  ({}s)",ind_dt.as_secs_f64(),);
-        // println!("remaining_indices = {}",remaining_indices.len());
-        if shuffle {
-            // let mut rng = thread_rng();
-            remaining_indices.shuffle(&mut rand::rng());
-        }
-
-        Self {
-            dataset,
-            remaining_indices,
-            input_window,
-            output_window,
-            device,
-        }
-    }
-    pub fn create_xy_seq(&self, i: usize, tensor: &Tensor) -> anyhow::Result<(Tensor, Tensor)> {
-        let data_len = tensor.dims()[1] as usize;
-        let chan_dim = tensor.dims()[0] as usize;
-        let in_win = self.input_window;
-        let out_win = self.output_window;
-        // println!("chan_dim /data_len/i = {}/{}/{}", chan_dim, data_len, i);
-        let shape = (chan_dim, (in_win + out_win));
-        let mut x = Tensor::zeros(shape, candle_core::DType::F32, self.device)?;
-        let mut y = Tensor::zeros(shape, candle_core::DType::F32, self.device)?;
-
-        if i >= (data_len - (in_win + out_win - 1)) {
-            anyhow::bail!(format!(
-                "creae_xy_seq has wrong index i: {}[data_len: {}, in/out_win: {}/{}]",
-                i, data_len, in_win, out_win
-            ));
-        }
-        // println!("[create_xy_seq] tensor = {}",tensor);
-        let x_slice = tensor.narrow(1, i, in_win)?.contiguous()?;
-                                                    // (0..chan_dim, i..(i+in_win)));
-        // println!(
-        //     "debug1 data_len/in/out_len{}{}{}",
-        //     data_len, in_win, out_win
-        // );
-        // println!("tesnsor shape = {:?}", tensor.shape());
-        // println!("x_slice shape {:?}", x_slice.shape());
-        let x_out = x.slice_assign(&[0..chan_dim, 0..in_win], &x_slice)?;
-        // let x_out = time_shift_channels(&x_out, self.device)?;
-
-        let y_slice = tensor.narrow(1, i, in_win + out_win)?.contiguous()?;
-        // (0..chan_dim, i..(i+in_win+out_win))?;
-        // println!("y_slice shape {:?}", y_slice.shape());
-        let y_out = y.slice_assign(&[0..chan_dim, 0..in_win + out_win], &y_slice)?;
-        // let x = tensor.slice(0, sub_idx as i64, self.dataset.data_window as i64);
-        // let y = tensor.slice(0, (sub_idx + 1) as i64, 1);
-        // println!("[create_xy_seq] x = {}",x);
-        // println!("[create_xy_seq] y= {}",y);
-        // println!("[create_xy_seq] x_out = {:?}",x_out.get(0)?.to_vec1::<f32>()?);
-        // println!("[create_xy_seq] y_out= {:?}",y_out.get(0)?.to_vec1::<f32>()?);
-        Ok((x_out, y_out))
-    }
-}
-
-
-impl<'a> Iterator for SCShotDatasetIter<'a> {
-    type Item = candle_core::Result<(Tensor, Tensor)>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(idx) = self.remaining_indices.pop() {
-            let (tensor, len) = self.dataset.get_tensor().unwrap();
-            // let (tensor, len) = self.dataset.get_tensor_random(main_idx).unwrap();
-            let tensor = tensor
-                .clone()
-                .to_device(self.device)
-                .unwrap();
-            // self.creae_xy_seq(&self,i:usize, tensor: &Tensor )
-            match self.create_xy_seq(idx, &tensor) {
-                Ok((x, y)) => Some(Ok((x, y))),
-                Err(e) => {
-                    println!("create_xy_seq if fail at index {}:{}", idx, e);
                     None
                 }
             }
@@ -2268,82 +1528,6 @@ impl<'a> SCDataLoader<'a> {
     pub fn batcher(&self) -> SCDataBatcher {
         //  let t1 = std::time::Instant::now();
         let iter = SCDatasetIter::new(
-            self.dataset.clone(),
-            self.shuffle,
-            self.input_window,
-            self.output_window,
-            self.device,
-        );
-        // let dt1 = t1.elapsed();
-        // println!( "[SCDataLoader][batcher][SCDatasetIter::new]time  ({}s)",dt1.as_secs_f64(),);
-        //  let t2 = std::time::Instant::now();
-        let b = Batcher::new_r2(iter)
-            .batch_size(self.batch_size)
-            .return_last_incomplete_batch(!self.drop_last);
-        // let dt2 = t2.elapsed();
-        // println!( "[SCDataLoader][batcher][Batcher::new_r2]time  ({}s)",dt2.as_secs_f64(),);
-        return  b
-            
-    }
-    pub fn len(&self) -> usize {
-        if self.drop_last {
-            self.batcher().count()
-        } else {
-            // let t1 = std::time::Instant::now();
-            let mut batcher = self.batcher();
-            let mut count = 0_usize;
-            while let Some(Ok(_el)) = batcher.next() {
-                count += 1;
-            }
-            // let dt1 = t1.elapsed();
-            // println!( "[SCDataLoader][len]time  ({}s)",dt1.as_secs_f64(),);
-            count
-        }
-         
-    }
-    pub fn is_empty(&self) -> bool {
-        (self.dataset.len() < self.batch_size) && (self.drop_last)
-    }
-}
-
-
-
-pub type SCShotDataBatcher<'a> = Batcher<IterResult2<SCShotDatasetIter<'a>>>;
-
-pub struct SCShotDataLoader<'a> {
-    dataset: SCShotDataset,
-    batch_size: usize,
-    shuffle: bool,
-    drop_last: bool,
-    input_window: usize,
-    output_window: usize,
-    device: &'a Device,
-}
-
-impl<'a> SCShotDataLoader<'a> {
-    pub fn new(
-        dataset: SCShotDataset,
-        batch_size: usize,
-        shuffle: bool,
-        drop_last: bool,
-        input_window: usize,
-        output_window: usize,
-        device: &'a Device,
-
-    ) -> Self {
-        Self {
-            dataset,
-            batch_size,
-            shuffle,
-            drop_last,
-            input_window,
-            output_window,
-            device: device,
-        }
-    }
-    pub fn batcher(&self) -> SCShotDataBatcher {
-        //  let t1 = std::time::Instant::now();
-        let iter = SCShotDatasetIter::new(
             self.dataset.clone(),
             self.shuffle,
             self.input_window,
