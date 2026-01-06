@@ -340,7 +340,8 @@ impl Server{
         // }
         // let pvm: HashMap<String, PV> = self.pvs.pv_map.clone();
         let socket = UdpSocket::bind("0.0.0.0:0").await?;
-        let server = "127.0.0.1:9000";
+        // let server = "127.0.0.1:9000";
+        let server = "192.168.1.116:9000";
         tokio::spawn(async move{
             loop{
                 // let start = Instant::now();
